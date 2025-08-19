@@ -143,9 +143,18 @@ const handleSubmit = async (e) => {
   try {
     // Prepare data for submission
     const submissionData = {
-      ...formData,
-      // Convert empty strings to null for dates
-      obsDate: formData.obsDate || null
+      receivedDate: formData.receivedDate,
+      claimNo: formData.claimNo,
+      dealerView: formData.dealerView,
+      dealerCode: formData.dealerCode,
+      brand: formData.brand,
+      size: formData.size,
+      sizeCode: formData.sizeCode,
+      obsDate: formData.obsDate || null,
+      techObs: formData.techObs || null,
+      treadDepth: formData.treadDepth || null,
+      consultantName: formData.consultantName || null,
+      obsNo: formData.obsNo || null
     };
 
     if (mode === 'create') {

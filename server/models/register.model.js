@@ -49,26 +49,32 @@ class Register {
     }
 
   static async update(id, updateData) {
-    // Clean the data - convert empty strings to null for nullable fields
-    const cleanedData = { ...updateData };
-    const nullableFields = ['obsDate', 'techObs', 'treadDepth', 'consultantName', 'obsNo'];
-    
-    nullableFields.forEach(field => {
-      if (cleanedData[field] === '') {
-        cleanedData[field] = null;
-      }
-    });
-
-    console.log('Updating data:', cleanedData); // Debug log
-    
-    try {
-      const [result] = await db.query('UPDATE registers SET ? WHERE id = ?', [cleanedData, id]);
-      return result.affectedRows;
-    } catch (error) {
-      console.error('Database error in update:', error);
-      throw error;
+  // Define the allowed fields for the registers table
+  const allowedFields = [
+    'receivedDate', 'claimNo', 'dealerView', 'dealerCode', 
+    'sizeCode', 'brand', 'size', 'obsDate', 'techObs', 
+    'treadDepth', 'consultantName', 'obsNo'
+  ];
+  
+  // Filter the update data to only include allowed fields
+  const cleanedData = {};
+  allowedFields.forEach(field => {
+    if (updateData[field] !== undefined) {
+      cleanedData[field] = updateData[field] === '' ? null : updateData[field];
     }
+  });
+
+
+     console.log('Filtered update data:', cleanedData); // Debug log
+  
+  try {
+    const [result] = await db.query('UPDATE registers SET ? WHERE id = ?', [cleanedData, id]);
+    return result.affectedRows;
+  } catch (error) {
+    console.error('Database error in update:', error);
+    throw error;
   }
+}
 
   static async delete(id) {
     try {
