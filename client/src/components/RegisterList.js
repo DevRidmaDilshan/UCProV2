@@ -16,7 +16,11 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle
+  DialogTitle,
+  Chip,
+  Card,
+  CardContent,
+  Grid // Add this import
 } from '@mui/material';
 import { Edit, Delete, Print, Visibility } from '@mui/icons-material';
 import { format } from 'date-fns';
@@ -61,6 +65,16 @@ const RegisterList = () => {
     }
   };
 
+  const getStatusChip = (register) => {
+    if (!register.obsNo) return <Chip label="Pending" color="warning" size="small" />;
+    
+    if (register.obsNo.startsWith('R')) return <Chip label="Recommended" color="success" size="small" />;
+    if (register.obsNo.startsWith('NR')) return <Chip label="Not Recommended" color="error" size="small" />;
+    if (register.obsNo.startsWith('SCN')) return <Chip label="Management Decision" color="info" size="small" />;
+    
+    return <Chip label="Unknown" size="small" />;
+  };
+
   const filteredRegisters = registers.filter(register => 
     register.claimNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     register.dealerCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,26 +83,32 @@ const RegisterList = () => {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
         UC Tyre Registers
       </Typography>
       
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <TextField
-          label="Search"
-          variant="outlined"
-          size="small"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <Button 
-          variant="contained" 
-          color="primary"
-          onClick={() => setEditRegister({})}
-        >
-          Add New
-        </Button>
-      </Box>
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <TextField
+              label="Search by Claim No, Dealer Code or Name"
+              variant="outlined"
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ width: '400px' }}
+            />
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => setEditRegister({})}
+              sx={{ fontWeight: 'bold' }}
+            >
+              Add New Registration
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
 
       {editRegister !== null && (
         <RegisterForm
@@ -101,54 +121,59 @@ const RegisterList = () => {
         />
       )}
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} elevation={3}>
         <Table>
-          <TableHead>
+          <TableHead sx={{ bgcolor: '#f5f5f5' }}>
             <TableRow>
-              <TableCell>Reg No</TableCell>
-              <TableCell>Received Date</TableCell>
-              <TableCell>Claim No</TableCell>
-              <TableCell>Dealer</TableCell>
-              <TableCell>Brand</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Reg No</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Received Date</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Claim No</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Dealer</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">Loading...</TableCell>
+                <TableCell colSpan={8} align="center">Loading...</TableCell>
               </TableRow>
             ) : filteredRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">No registers found</TableCell>
+                <TableCell colSpan={8} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
               filteredRegisters.map((register) => (
-                <TableRow key={register.id}>
-                  <TableCell>{register.id}</TableCell>
-                  <TableCell>{format(new Date(register.receivedDate), 'dd/MM/yyyy')}</TableCell>
+                <TableRow key={register.id} hover>
+                  <TableCell sx={{ fontWeight: 'bold' }}>{register.id}</TableCell>
+                  <TableCell>{register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                   <TableCell>{register.claimNo}</TableCell>
-                  <TableCell>{register.dealerName || register.dealerCode}</TableCell>
+                  <TableCell>
+                    {register.dealerName || register.dealerCode}
+                    {register.dealerLocation && ` (${register.dealerLocation})`}
+                  </TableCell>
                   <TableCell>{register.brand}</TableCell>
                   <TableCell>{register.size}</TableCell>
+                  <TableCell>{getStatusChip(register)}</TableCell>
                   <TableCell>
-                    <IconButton onClick={() => setViewRegister(register)}>
+                    <IconButton onClick={() => setViewRegister(register)} title="View Details">
                       <Visibility color="primary" />
                     </IconButton>
                     <IconButton onClick={() => {
-                        // Create a copy with only register fields
-                        const registerData = { ...register };
-                        delete registerData.dealerName;
-                        delete registerData.dealerLocation;
-                        setEditRegister(registerData);
-                        }}>
-                        <Edit color="secondary" />
+                      // Create a copy with only register fields
+                      const registerData = { ...register };
+                      delete registerData.dealerName;
+                      delete registerData.dealerLocation;
+                      setEditRegister(registerData);
+                    }} title="Edit">
+                      <Edit color="secondary" />
                     </IconButton>
-                    <IconButton onClick={() => setDeleteId(register.id)}>
+                    <IconButton onClick={() => setDeleteId(register.id)} title="Delete">
                       <Delete color="error" />
                     </IconButton>
-                    <IconButton>
+                    <IconButton title="Print">
                       <Print />
                     </IconButton>
                   </TableCell>
@@ -189,36 +214,76 @@ const RegisterList = () => {
       >
         {viewRegister && (
           <>
-            <DialogTitle>Register Details - #{viewRegister.id}</DialogTitle>
+            <DialogTitle sx={{ bgcolor: '#1976d2', color: 'white' }}>
+              Register Details - #{viewRegister.id}
+            </DialogTitle>
             <DialogContent>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
-                <Box>
-                  <Typography variant="subtitle1">Basic Information</Typography>
-                  <Typography>Received Date: {format(new Date(viewRegister.receivedDate), 'dd/MM/yyyy')}</Typography>
-                  <Typography>Claim No: {viewRegister.claimNo}</Typography>
-                  <Typography>Dealer: {viewRegister.dealerName || viewRegister.dealerCode}</Typography>
-                  <Typography>Dealer Location: {viewRegister.dealerLocation}</Typography>
-                  <Typography>Dealer View: {viewRegister.dealerView}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle1">Tyre Information</Typography>
-                  <Typography>Brand: {viewRegister.brand}</Typography>
-                  <Typography>Size: {viewRegister.size}</Typography>
-                  <Typography>Size Code: {viewRegister.sizeCode}</Typography>
-                </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" gutterBottom>Basic Information</Typography>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Received Date:</Typography>
+                    <Typography>{viewRegister.receivedDate ? format(new Date(viewRegister.receivedDate), 'dd/MM/yyyy') : 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Claim No:</Typography>
+                    <Typography>{viewRegister.claimNo}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Dealer:</Typography>
+                    <Typography>{viewRegister.dealerName || viewRegister.dealerCode}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Dealer Location:</Typography>
+                    <Typography>{viewRegister.dealerLocation || 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Dealer View:</Typography>
+                    <Typography>{viewRegister.dealerView}</Typography>
+                  </Grid>
+                </Grid>
+
+                <Typography variant="h6" gutterBottom>Tyre Information</Typography>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Brand:</Typography>
+                    <Typography>{viewRegister.brand}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Size:</Typography>
+                    <Typography>{viewRegister.size}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Size Code:</Typography>
+                    <Typography>{viewRegister.sizeCode || 'N/A'}</Typography>
+                  </Grid>
+                </Grid>
+
                 {viewRegister.obsDate && (
                   <>
-                    <Box>
-                      <Typography variant="subtitle1">Technical Details</Typography>
-                      <Typography>Observation Date: {format(new Date(viewRegister.obsDate), 'dd/MM/yyyy')}</Typography>
-                      <Typography>Technical Observation: {viewRegister.techObs}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle1">Consultation Details</Typography>
-                      <Typography>Remaining Tread Depth: {viewRegister.treadDepth}</Typography>
-                      <Typography>Consultant Name: {viewRegister.consultantName}</Typography>
-                      <Typography>Observation No: {viewRegister.obsNo}</Typography>
-                    </Box>
+                    <Typography variant="h6" gutterBottom>Technical Details</Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Observation Date:</Typography>
+                        <Typography>{format(new Date(viewRegister.obsDate), 'dd/MM/yyyy')}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Technical Observation:</Typography>
+                        <Typography>{viewRegister.techObs || 'N/A'}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Remaining Tread Depth:</Typography>
+                        <Typography>{viewRegister.treadDepth || 'N/A'}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Consultant Name:</Typography>
+                        <Typography>{viewRegister.consultantName || 'N/A'}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Observation No:</Typography>
+                        <Typography>{viewRegister.obsNo || 'N/A'}</Typography>
+                      </Grid>
+                    </Grid>
                   </>
                 )}
               </Box>
@@ -230,7 +295,11 @@ const RegisterList = () => {
               <Button 
                 onClick={() => {
                   setViewRegister(null);
-                  setEditRegister(viewRegister);
+                  // Create a copy with only register fields
+                  const registerData = { ...viewRegister };
+                  delete registerData.dealerName;
+                  delete registerData.dealerLocation;
+                  setEditRegister(registerData);
                 }}
                 color="secondary"
               >
