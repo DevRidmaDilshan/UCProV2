@@ -26,7 +26,8 @@ import {
   getSizeDetails,
   createRegister,
   updateRegister,
-  getAllConsultants
+  getAllConsultants,
+  getNextObservationNumber
 } from '../services/api';
 
 const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
@@ -43,7 +44,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
     techObs: '',
     treadDepth: '',
     consultantName: '',
-    obsNo: ''
+    obsNo: '',
+    obsStatus: 'Pending'
   });
 
   const [dealerViews, setDealerViews] = useState([]);
@@ -56,11 +58,24 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
 
   useEffect(() => {
     if (initialData) {
+      // Determine obsStatus based on obsNo
+      let obsStatus = 'Pending';
+      if (initialData.obsNo) {
+        if (initialData.obsNo.startsWith('R')) {
+          obsStatus = 'Recommended';
+        } else if (initialData.obsNo.startsWith('NR')) {
+          obsStatus = 'Not Recommended';
+        } else if (initialData.obsNo.startsWith('SCN')) {
+          obsStatus = 'Forwarded for Management Decision';
+        }
+      }
+      
       setFormData(prev => ({
         ...prev,
         ...initialData,
         receivedDate: initialData.receivedDate || format(new Date(), 'yyyy-MM-dd'),
-        obsDate: initialData.obsDate || format(new Date(), 'yyyy-MM-dd')
+        obsDate: initialData.obsDate || format(new Date(), 'yyyy-MM-dd'),
+        obsStatus
       }));
     }
 
@@ -121,12 +136,20 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
               ...prev,
               sizeCode: data.sizeCode
             }));
+          } else {
+            setFormData(prev => ({
+              ...prev,
+              sizeCode: ''
+            }));
           }
         } catch (error) {
           console.error('Error fetching size details:', error);
+          setFormData(prev => ({ ...prev, sizeCode: '' }));
         }
       };
       fetchSizeDetails();
+    } else {
+      setFormData(prev => ({ ...prev, sizeCode: '' }));
     }
   }, [formData.size]);
 
@@ -141,6 +164,38 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  const handleStatusChange = async (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, obsStatus: value }));
+    
+    // If not Pending, generate the next observation number
+    if (value !== 'Pending') {
+      try {
+        let type = '';
+        switch(value) {
+          case 'Recommended':
+            type = 'R';
+            break;
+          case 'Not Recommended':
+            type = 'NR';
+            break;
+          case 'Forwarded for Management Decision':
+            type = 'SCN';
+            break;
+          default:
+            return;
+        }
+        
+        const { data } = await getNextObservationNumber(type);
+        setFormData(prev => ({ ...prev, obsNo: data.nextNumber }));
+      } catch (error) {
+        console.error('Error generating observation number:', error);
+      }
+    } else {
+      setFormData(prev => ({ ...prev, obsNo: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -358,18 +413,29 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel>Observation No</InputLabel>
+                    <InputLabel>Observation Status</InputLabel>
                     <Select
-                      name="obsNo"
-                      value={formData.obsNo}
-                      label="Observation No"
-                      onChange={handleChange}
+                      name="obsStatus"
+                      value={formData.obsStatus}
+                      label="Observation Status"
+                      onChange={handleStatusChange}
                     >
-                      <MenuItem value="R">Recommended (R__)</MenuItem>
-                      <MenuItem value="NR">Not Recommended (NR__)</MenuItem>
-                      <MenuItem value="SCN">Forwarded for management decision (SCN__)</MenuItem>
+                      <MenuItem value="Pending">Pending</MenuItem>
+                      <MenuItem value="Recommended">Recommended</MenuItem>
+                      <MenuItem value="Not Recommended">Not Recommended</MenuItem>
+                      <MenuItem value="Forwarded for Management Decision">Forwarded for Management Decision</MenuItem>
                     </Select>
                   </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Observation Number"
+                    name="obsNo"
+                    value={formData.obsNo}
+                    onChange={handleChange}
+                    disabled
+                  />
                 </Grid>
               </Grid>
             </CardContent>

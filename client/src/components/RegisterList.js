@@ -20,7 +20,8 @@ import {
   Chip,
   Card,
   CardContent,
-  Grid // Add this import
+  Grid,
+  TablePagination
 } from '@mui/material';
 import { Edit, Delete, Print, Visibility } from '@mui/icons-material';
 import { format } from 'date-fns';
@@ -31,9 +32,12 @@ const RegisterList = () => {
   const [registers, setRegisters] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [regNoSearch, setRegNoSearch] = useState('');
   const [editRegister, setEditRegister] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [viewRegister, setViewRegister] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchRegisters();
@@ -75,11 +79,27 @@ const RegisterList = () => {
     return <Chip label="Unknown" size="small" />;
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   const filteredRegisters = registers.filter(register => 
-    register.claimNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    register.dealerCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (register.dealerName && register.dealerName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (regNoSearch ? register.id.toString().includes(regNoSearch) : true) &&
+    (searchTerm ? (
+      register.claimNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      register.dealerCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (register.dealerName && register.dealerName.toLowerCase().includes(searchTerm.toLowerCase()))
+    ) : true)
   );
+
+  // Avoid a layout jump when reaching the last page with empty rows.
+  const emptyRows =
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredRegisters.length) : 0;
 
   return (
     <Box>
@@ -89,24 +109,39 @@ const RegisterList = () => {
       
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <TextField
-              label="Search by Claim No, Dealer Code or Name"
-              variant="outlined"
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ width: '400px' }}
-            />
-            <Button 
-              variant="contained" 
-              color="primary"
-              onClick={() => setEditRegister({})}
-              sx={{ fontWeight: 'bold' }}
-            >
-              Add New Registration
-            </Button>
-          </Box>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="Search by Reg No"
+                variant="outlined"
+                size="small"
+                value={regNoSearch}
+                onChange={(e) => setRegNoSearch(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="Search by Claim No, Dealer Code or Name"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button 
+                variant="contained" 
+                color="primary"
+                onClick={() => setEditRegister({})}
+                sx={{ fontWeight: 'bold' }}
+                fullWidth
+              >
+                Add New Registration
+              </Button>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
@@ -121,8 +156,8 @@ const RegisterList = () => {
         />
       )}
 
-      <TableContainer component={Paper} elevation={3}>
-        <Table>
+      <TableContainer component={Paper} elevation={3} sx={{ maxHeight: '60vh' }}>
+        <Table stickyHeader>
           <TableHead sx={{ bgcolor: '#f5f5f5' }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 'bold' }}>Reg No</TableCell>
@@ -131,6 +166,7 @@ const RegisterList = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Dealer</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Size Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
@@ -138,14 +174,16 @@ const RegisterList = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">Loading...</TableCell>
+                <TableCell colSpan={9} align="center">Loading...</TableCell>
               </TableRow>
             ) : filteredRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">No registers found</TableCell>
+                <TableCell colSpan={9} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
-              filteredRegisters.map((register) => (
+              filteredRegisters
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((register) => (
                 <TableRow key={register.id} hover>
                   <TableCell sx={{ fontWeight: 'bold' }}>{register.id}</TableCell>
                   <TableCell>{register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
@@ -156,6 +194,7 @@ const RegisterList = () => {
                   </TableCell>
                   <TableCell>{register.brand}</TableCell>
                   <TableCell>{register.size}</TableCell>
+                  <TableCell>{register.sizeCode || 'N/A'}</TableCell>
                   <TableCell>{getStatusChip(register)}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
@@ -180,9 +219,24 @@ const RegisterList = () => {
                 </TableRow>
               ))
             )}
+            {emptyRows > 0 && (
+              <TableRow style={{ height: 53 * emptyRows }}>
+                <TableCell colSpan={9} />
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={filteredRegisters.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog

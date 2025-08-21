@@ -21,4 +21,13 @@ router.get('/size-details/:size', registerController.getSizeDetails);
 // Consultant routes
 router.get('/consultants/all', consultantController.getAllConsultants);
 
+// Observation number routes
+router.get('/observation-numbers', registerController.getObservationNumbers);
+
+// Report routes
+router.post('/reports', registerController.generateReport);
+
+// Dashboard routes
+router.get('/dashboard', registerController.getDashboardData);
+
 module.exports = router;

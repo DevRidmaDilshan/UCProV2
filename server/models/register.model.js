@@ -26,7 +26,7 @@ class Register {
   static async getAll() {
     try {
       const [rows] = await db.query(`
-        SELECT r.*, d.dealerName, d.dealerLocation
+        SELECT r.*, d.dealerName, d.dealerLocation 
         FROM registers r
         LEFT JOIN dealers d ON r.dealerCode = d.dealerCode
         ORDER BY r.receivedDate DESC
@@ -41,7 +41,7 @@ class Register {
   static async getById(id) {
     try {
       const [rows] = await db.query(`
-        SELECT r.*, d.dealerName, d.dealerLocation
+        SELECT r.*, d.dealerName, d.dealerLocation 
         FROM registers r
         LEFT JOIN dealers d ON r.dealerCode = d.dealerCode
         WHERE r.id = ?
@@ -58,7 +58,7 @@ class Register {
     const allowedFields = [
       'receivedDate', 'claimNo', 'dealerView', 'dealerCode', 
       'sizeCode', 'brand', 'size', 'obsDate', 'techObs', 
-      'treadDepth', 'consultantName', 'obsNo'
+      'treadDepth', 'consultantName', 'obsNo', 'obsStatus'
     ];
     
     // Filter the update data to only include allowed fields
@@ -86,6 +86,29 @@ class Register {
       return result.affectedRows;
     } catch (error) {
       console.error('Database error in delete:', error);
+      throw error;
+    }
+  }
+
+  // New method to get the next observation number
+  static async getNextObservationNumber(type) {
+    try {
+      // Get the last number for this type
+      const [rows] = await db.query(
+        'SELECT obsNo FROM registers WHERE obsNo LIKE ? ORDER BY id DESC LIMIT 1',
+        [`${type}%`]
+      );
+      
+      let nextNumber = 1;
+      if (rows.length > 0 && rows[0].obsNo) {
+        const lastNumber = parseInt(rows[0].obsNo.replace(type, ''), 10);
+        nextNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
+      }
+      
+      // Format with leading zeros
+      return `${type}${nextNumber.toString().padStart(5, '0')}`;
+    } catch (error) {
+      console.error('Error getting next observation number:', error);
       throw error;
     }
   }
