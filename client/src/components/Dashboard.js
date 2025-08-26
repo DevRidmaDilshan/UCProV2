@@ -41,6 +41,13 @@ const Dashboard = () => {
       } else {
         setError('Failed to load dashboard data. Please check your connection and try again.');
       }
+      
+      // Set fallback data
+      setDashboardData({
+        statusCounts: { pending: 0, recommended: 0, notRecommended: 0, managementDecision: 0, total: 0 },
+        brandCounts: [],
+        monthlyCounts: []
+      });
     } finally {
       setLoading(false);
     }

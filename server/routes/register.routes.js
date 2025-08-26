@@ -23,9 +23,10 @@ router.get('/consultants/all', consultantController.getAllConsultants);
 
 // Observation number routes
 router.get('/observation-numbers', registerController.getObservationNumbers);
+router.get('/observation-number/:type', registerController.getNextObservationNumber); // Add this line
 
 // Report routes
-router.post('/reports', registerController.generateReport);
+router.post('/reports', registerController.generateReport); // Add this line
 
 // Dashboard routes
 router.get('/dashboard', registerController.getDashboardData);

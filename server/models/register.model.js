@@ -4,7 +4,7 @@ class Register {
   static async create(registerData) {
     // Clean the data - convert empty strings to null for nullable fields
     const cleanedData = { ...registerData };
-    const nullableFields = ['obsDate', 'techObs', 'treadDepth', 'consultantName', 'obsNo', 'sizeCode'];
+    const nullableFields = ['obsDate', 'techObs', 'treadDepth', 'consultantName', 'obsNo'];
     
     nullableFields.forEach(field => {
       if (cleanedData[field] === '') {

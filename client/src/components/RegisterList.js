@@ -5,7 +5,7 @@ import {
   TableCell, 
   TableContainer, 
   TableHead, 
-  TableRow, 
+ TableRow, 
   Paper, 
   Button, 
   IconButton,
@@ -70,13 +70,20 @@ const RegisterList = () => {
   };
 
   const getStatusChip = (register) => {
-    if (!register.obsNo) return <Chip label="Pending" color="warning" size="small" />;
+    if (!register.obsStatus || register.obsStatus === 'Pending') {
+      return <Chip label="Pending" color="warning" size="small" />;
+    }
     
-    if (register.obsNo.startsWith('R')) return <Chip label="Recommended" color="success" size="small" />;
-    if (register.obsNo.startsWith('NR')) return <Chip label="Not Recommended" color="error" size="small" />;
-    if (register.obsNo.startsWith('SCN')) return <Chip label="Management Decision" color="info" size="small" />;
-    
-    return <Chip label="Unknown" size="small" />;
+    switch(register.obsStatus) {
+      case 'Recommended':
+        return <Chip label="Recommended" color="success" size="small" />;
+      case 'Not Recommended':
+        return <Chip label="Not Recommended" color="error" size="small" />;
+      case 'Forwarded for Management Decision':
+        return <Chip label="Management Decision" color="info" size="small" />;
+      default:
+        return <Chip label="Unknown" size="small" />;
+    }
   };
 
   const handleChangePage = (event, newPage) => {
@@ -164,6 +171,7 @@ const RegisterList = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Received Date</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Claim No</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Dealer</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Dealer Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size Code</TableCell>
@@ -174,11 +182,11 @@ const RegisterList = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">Loading...</TableCell>
+                <TableCell colSpan={10} align="center">Loading...</TableCell>
               </TableRow>
             ) : filteredRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} align="center">No registers found</TableCell>
+                <TableCell colSpan={10} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
               filteredRegisters
@@ -192,6 +200,7 @@ const RegisterList = () => {
                     {register.dealerName || register.dealerCode}
                     {register.dealerLocation && ` (${register.dealerLocation})`}
                   </TableCell>
+                  <TableCell>{register.dealerCode}</TableCell>
                   <TableCell>{register.brand}</TableCell>
                   <TableCell>{register.size}</TableCell>
                   <TableCell>{register.sizeCode || 'N/A'}</TableCell>
@@ -200,14 +209,18 @@ const RegisterList = () => {
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
                       <Visibility color="primary" />
                     </IconButton>
-                    <IconButton onClick={() => {
-                      // Create a copy with only register fields
-                      const registerData = { ...register };
-                      delete registerData.dealerName;
-                      delete registerData.dealerLocation;
-                      setEditRegister(registerData);
-                    }} title="Edit">
-                      <Edit color="secondary" />
+                    <IconButton 
+                      onClick={() => {
+                        // Create a copy with only register fields
+                        const registerData = { ...register };
+                        delete registerData.dealerName;
+                        delete registerData.dealerLocation;
+                        setEditRegister(registerData);
+                      }} 
+                      title="Edit"
+                      sx={{ color: '#424242' }} // Dark gray color
+                    >
+                      <Edit />
                     </IconButton>
                     <IconButton onClick={() => setDeleteId(register.id)} title="Delete">
                       <Delete color="error" />
@@ -221,7 +234,7 @@ const RegisterList = () => {
             )}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={9} />
+                <TableCell colSpan={10} />
               </TableRow>
             )}
           </TableBody>
@@ -332,6 +345,10 @@ const RegisterList = () => {
                       <Grid item xs={6}>
                         <Typography variant="subtitle2">Consultant Name:</Typography>
                         <Typography>{viewRegister.consultantName || 'N/A'}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2">Observation Status:</Typography>
+                        <Typography>{viewRegister.obsStatus || 'Pending'}</Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="subtitle2">Observation No:</Typography>

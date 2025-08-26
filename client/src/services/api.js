@@ -1,37 +1,32 @@
 import axios from 'axios';
 
-// Create axios instance with base URL
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? 'https://your-production-url.com/api/registers' 
-    : 'http://localhost:5000/api/registers',
-  timeout: 10000, // 10 second timeout
+  baseURL: 'http://localhost:5000/api/registers',
 });
 
-// Add request interceptor for logging
+// Request interceptor to log requests
 api.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
+    console.log('Making request to:', config.url);
     return config;
   },
   (error) => {
-    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for error handling
+// Response interceptor to log responses
 api.interceptors.response.use(
   (response) => {
-    console.log(`Received response: ${response.status}`);
+    console.log('Response received:', response.status);
     return response;
   },
   (error) => {
-    console.error('Response error:', error);
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
-export const getNextObservationNumber = () => api.get('/observation-numbers');
+
 export const createRegister = (data) => api.post('/', data);
 export const getAllRegisters = () => api.get('/');
 export const getRegisterById = (id) => api.get(`/${id}`);
@@ -42,5 +37,7 @@ export const getDealerByView = (dealerView) => api.get(`/dealer/${dealerView}`);
 export const getSizesByBrand = (brand) => api.get(`/sizes/${brand}`);
 export const getSizeDetails = (size) => api.get(`/size-details/${size}`);
 export const getAllConsultants = () => api.get('/consultants/all');
-export const generateReport = (filters) => api.post('/reports', filters);
+export const getObservationNumbers = () => api.get('/observation-numbers');
+export const getNextObservationNumber = (type) => api.get(`/observation-number/${type}`); // Add this line
+export const generateReport = (filters) => api.post('/reports', filters); // Add this line
 export const getDashboardData = () => api.get('/dashboard');

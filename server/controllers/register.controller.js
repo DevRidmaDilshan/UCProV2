@@ -272,13 +272,13 @@ exports.generateReport = async (req, res) => {
 
 exports.getDashboardData = async (req, res) => {
   try {
-    // Get counts by status
+    // Get counts by status using obsStatus field
     const [statusCounts] = await db.query(`
       SELECT 
-        SUM(CASE WHEN obsNo IS NULL OR obsNo = '' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN obsNo LIKE 'R%' THEN 1 ELSE 0 END) as recommended,
-        SUM(CASE WHEN obsNo LIKE 'NR%' THEN 1 ELSE 0 END) as notRecommended,
-        SUM(CASE WHEN obsNo LIKE 'SCN%' THEN 1 ELSE 0 END) as managementDecision,
+        SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as notRecommended,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as managementDecision,
         COUNT(*) as total
       FROM registers
     `);
@@ -287,7 +287,7 @@ exports.getDashboardData = async (req, res) => {
     const [brandCounts] = await db.query(`
       SELECT brand, COUNT(*) as count
       FROM registers
-      WHERE brand IS NOT NULL
+      WHERE brand IS NOT NULL AND brand != ''
       GROUP BY brand
       ORDER BY count DESC
     `);
