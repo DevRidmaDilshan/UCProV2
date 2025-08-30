@@ -37,7 +37,6 @@ export const getDealerByView = (dealerView) => api.get(`/dealer/${dealerView}`);
 export const getSizesByBrand = (brand) => api.get(`/sizes/${brand}`);
 export const getSizeDetails = (size) => api.get(`/size-details/${size}`);
 export const getAllConsultants = () => api.get('/consultants/all');
-export const getObservationNumbers = () => api.get('/observation-numbers');
-export const getNextObservationNumber = (type) => api.get(`/observation-number/${type}`); // Add this line
-export const generateReport = (filters) => api.post('/reports', filters); // Add this line
+export const getNextObservationNumber = (type) => api.get(`/observation-number/${type}`);
 export const getDashboardData = () => api.get('/dashboard');
+export const generateReport = (filters) => api.post('/reports', filters);

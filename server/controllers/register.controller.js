@@ -76,6 +76,23 @@ exports.getRegisterById = async (req, res) => {
 
 exports.updateRegister = async (req, res) => {
   try {
+    // Format receivedDate if it exists
+    if (req.body.receivedDate) {
+      // Extract just the date part from ISO string or format existing date
+      const date = new Date(req.body.receivedDate);
+      if (!isNaN(date.getTime())) {
+        req.body.receivedDate = date.toISOString().split('T')[0];
+      }
+    }
+    
+    // Similarly, format any other date fields like obsDate
+    if (req.body.obsDate) {
+      const date = new Date(req.body.obsDate);
+      if (!isNaN(date.getTime())) {
+        req.body.obsDate = date.toISOString().split('T')[0];
+      }
+    }
+
     console.log('Updating register with data:', req.body);
     
     // If obsStatus is provided, generate the appropriate observation number

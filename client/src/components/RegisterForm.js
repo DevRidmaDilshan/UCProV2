@@ -11,14 +11,11 @@ import {
   Typography,
   Autocomplete,
   Box,
-  Stepper,
-  Step,
-  StepLabel,
   Card,
   CardContent,
-  Divider
+  Alert
 } from '@mui/material';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { 
   getInitialData, 
   getDealerByView, 
@@ -30,8 +27,7 @@ import {
   getNextObservationNumber
 } from '../services/api';
 
-const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
-  const [activeStep, setActiveStep] = useState(0);
+const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode = false }) => {
   const [formData, setFormData] = useState({
     receivedDate: format(new Date(), 'yyyy-MM-dd'),
     claimNo: '',
@@ -51,10 +47,21 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
   const [dealerViews, setDealerViews] = useState([]);
   const [brands, setBrands] = useState([]);
   const [sizes, setSizes] = useState([]);
+  const [sizeOptions, setSizeOptions] = useState([]);
   const [consultants, setConsultants] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const steps = ['Basic Information', 'Technical Details'];
+  // Format date for display in input fields
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return format(new Date(), 'yyyy-MM-dd');
+    try {
+      const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString);
+      return isNaN(date.getTime()) ? format(new Date(), 'yyyy-MM-dd') : format(date, 'yyyy-MM-dd');
+    } catch (error) {
+      return format(new Date(), 'yyyy-MM-dd');
+    }
+  };
 
   useEffect(() => {
     if (initialData) {
@@ -73,8 +80,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
       setFormData(prev => ({
         ...prev,
         ...initialData,
-        receivedDate: initialData.receivedDate || format(new Date(), 'yyyy-MM-dd'),
-        obsDate: initialData.obsDate || format(new Date(), 'yyyy-MM-dd'),
+        receivedDate: formatDateForInput(initialData.receivedDate),
+        obsDate: formatDateForInput(initialData.obsDate),
         obsStatus
       }));
     }
@@ -117,54 +124,37 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
       const fetchSizes = async () => {
         try {
           const { data } = await getSizesByBrand(formData.brand);
-          setSizes(data);
+          setSizes(data.map(size => size.size));
+          setSizeOptions(data);
         } catch (error) {
           console.error('Error fetching sizes:', error);
         }
       };
       fetchSizes();
+    } else {
+      setSizes([]);
+      setSizeOptions([]);
+      setFormData(prev => ({ ...prev, size: '', sizeCode: '' }));
     }
   }, [formData.brand]);
 
-  useEffect(() => {
-    if (formData.size) {
-      const fetchSizeDetails = async () => {
-        try {
-          const { data } = await getSizeDetails(formData.size);
-          if (data && data.sizeCode) {
-            setFormData(prev => ({
-              ...prev,
-              sizeCode: data.sizeCode
-            }));
-          } else {
-            setFormData(prev => ({
-              ...prev,
-              sizeCode: ''
-            }));
-          }
-        } catch (error) {
-          console.error('Error fetching size details:', error);
-          setFormData(prev => ({ ...prev, sizeCode: '' }));
-        }
-      };
-      fetchSizeDetails();
+  const handleSizeChange = (e, newValue) => {
+    if (newValue) {
+      // Find the selected size object to get the sizeCode
+      const selectedSize = sizeOptions.find(size => size.size === newValue);
+      setFormData(prev => ({
+        ...prev,
+        size: newValue,
+        sizeCode: selectedSize ? selectedSize.sizeCode : ''
+      }));
     } else {
-      setFormData(prev => ({ ...prev, sizeCode: '' }));
+      setFormData(prev => ({ ...prev, size: '', sizeCode: '' }));
     }
-  }, [formData.size]);
-
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleNext = () => {
-    setActiveStep((prevStep) => prevStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
   };
 
   const handleStatusChange = async (e) => {
@@ -202,168 +192,174 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate required fields based on step
-    if (activeStep === 0 && (!formData.claimNo || !formData.dealerView || !formData.brand || !formData.size)) {
-      alert('Please fill all required fields');
+    // Validate required fields
+    if (!formData.claimNo || !formData.dealerView || !formData.brand || !formData.size) {
+      setMessage('Please fill all required fields');
       return;
     }
     
-    if (activeStep === 1 && mode === 'edit') {
-      // For edit mode, submit the form
-      setLoading(true);
-      try {
-        // Filter out non-register fields
-        const { dealerName, dealerLocation, ...submitData } = formData;
-        await updateRegister(initialData.id, submitData);
-        onSuccess();
-      } catch (error) {
-        console.error('Error submitting form:', error);
-        alert('Error saving data. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    } else if (activeStep === 0 && mode === 'create') {
-      // For create mode, move to next step
-      handleNext();
-    }
-  };
-
-  const submitCreate = async () => {
     setLoading(true);
     try {
-      await createRegister(formData);
-      onSuccess();
+      if (mode === 'create') {
+        // For create mode, only save basic information
+        const basicData = {
+          receivedDate: formData.receivedDate,
+          claimNo: formData.claimNo,
+          dealerView: formData.dealerView,
+          dealerCode: formData.dealerCode,
+          brand: formData.brand,
+          size: formData.size,
+          sizeCode: formData.sizeCode
+        };
+        
+        const registerId = await createRegister(basicData);
+        setMessage('Basic information saved successfully! Registration No: ' + registerId);
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      } else {
+        // For edit mode, save all data
+        await updateRegister(initialData.id, formData);
+        setMessage('Registration updated successfully!');
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      }
     } catch (error) {
-      console.error('Error creating register:', error);
-      alert('Error creating record. Please try again.');
+      console.error('Error submitting form:', error);
+      setMessage('Error saving data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+    <Paper elevation={3} sx={{ p: 3, mb: 3, maxWidth: '1200px', mx: 'auto' }}>
       <Typography variant="h5" gutterBottom>
-        {mode === 'create' ? 'Add New UC Tyre' : 'Edit UC Tyre'}
+        {technicalMode ? 'Add Technical Information' : mode === 'create' ? 'Add New UC Tyre' : 'Edit UC Tyre'}
       </Typography>
-      
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-        {steps.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+
+      {message && (
+        <Alert severity={message.includes('Error') ? 'error' : 'success'} sx={{ mb: 2 }}>
+          {message}
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit}>
-        {activeStep === 0 && (
-          <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Basic Information
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Received Date"
-                    type="date"
-                    name="receivedDate"
-                    value={formData.receivedDate}
-                    onChange={handleChange}
-                    InputLabelProps={{ shrink: true }}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Claim No"
-                    name="claimNo"
-                    value={formData.claimNo}
-                    onChange={handleChange}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    options={dealerViews}
-                    value={formData.dealerView}
-                    onChange={(e, newValue) => setFormData(prev => ({ ...prev, dealerView: newValue }))}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Dealer View"
-                        required
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Dealer Code"
-                    name="dealerCode"
-                    value={formData.dealerCode}
-                    onChange={handleChange}
-                    disabled
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Brand</InputLabel>
-                    <Select
-                      name="brand"
-                      value={formData.brand}
-                      label="Brand"
-                      onChange={handleChange}
-                      required
-                    >
-                      {brands.map((brand) => (
-                        <MenuItem key={brand} value={brand}>
-                          {brand}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    options={sizes.map(size => size.size)}
-                    value={formData.size}
-                    onChange={(e, newValue) => setFormData(prev => ({ ...prev, size: newValue }))}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Size"
-                        required
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Size Code"
-                    name="sizeCode"
-                    value={formData.sizeCode}
-                    onChange={handleChange}
-                    disabled
-                  />
-                </Grid>
+        <Card variant="outlined" sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Basic Information
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  label="Received Date"
+                  type="date"
+                  name="receivedDate"
+                  value={formData.receivedDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                  required
+                  disabled={technicalMode}
+                />
               </Grid>
-            </CardContent>
-          </Card>
-        )}
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  label="Claim No"
+                  name="claimNo"
+                  value={formData.claimNo}
+                  onChange={handleChange}
+                  required
+                  disabled={technicalMode}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={6}>
+                <Autocomplete
+                  options={dealerViews}
+                  value={formData.dealerView}
+                  onChange={(e, newValue) => setFormData(prev => ({ ...prev, dealerView: newValue }))}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Dealer View"
+                      required
+                      fullWidth
+                    />
+                  )}
+                  sx={{ minWidth: 250 }}
+                  disabled={technicalMode}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  label="Dealer Code"
+                  name="dealerCode"
+                  value={formData.dealerCode}
+                  onChange={handleChange}
+                  disabled
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Brand</InputLabel>
+                  <Select
+                    name="brand"
+                    value={formData.brand}
+                    label="Brand"
+                    onChange={handleChange}
+                    required
+                    sx={{ minWidth: 250 }}
+                    disabled={technicalMode}
+                  >
+                    {brands.map((brand) => (
+                      <MenuItem key={brand} value={brand}>
+                        {brand}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Autocomplete
+                  options={sizes}
+                  value={formData.size}
+                  onChange={handleSizeChange}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Size"
+                      required
+                    />
+                  )}
+                  disabled={technicalMode}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  fullWidth
+                  label="Size Code"
+                  name="sizeCode"
+                  value={formData.sizeCode}
+                  onChange={handleChange}
+                  disabled
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
 
-        {activeStep === 1 && (
+        {(mode === 'edit' || technicalMode) && (
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Technical Details
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={4}>
                   <TextField
                     fullWidth
                     label="Observation Date"
@@ -374,18 +370,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Technical Observation"
-                    name="techObs"
-                    value={formData.techObs}
-                    onChange={handleChange}
-                    multiline
-                    rows={3}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={4}>
                   <TextField
                     fullWidth
                     label="Remaining Tread Depth"
@@ -395,7 +380,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                     placeholder="e.g., 6,6,6,6"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={4}>
                   <FormControl fullWidth>
                     <InputLabel>Consultant Name</InputLabel>
                     <Select
@@ -412,7 +397,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={4}>
                   <FormControl fullWidth>
                     <InputLabel>Observation Status</InputLabel>
                     <Select
@@ -428,7 +413,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={6} md={4}>
                   <TextField
                     fullWidth
                     label="Observation Number"
@@ -438,6 +423,18 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
                     disabled
                   />
                 </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Technical Observation"
+                    name="techObs"
+                    value={formData.techObs}
+                    onChange={handleChange}
+                    multiline
+                    rows={4}
+                    placeholder="Enter technical observations here..."
+                  />
+                </Grid>
               </Grid>
             </CardContent>
           </Card>
@@ -445,45 +442,22 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create' }) => {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
           <Button
-            disabled={activeStep === 0}
-            onClick={handleBack}
+            onClick={() => onSuccess()}
+            variant="outlined"
           >
-            Back
+            Cancel
           </Button>
           
-          {activeStep === steps.length - 1 ? (
-            <Button 
-              type="submit" 
-              variant="contained" 
-              color="primary"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save'}
-            </Button>
-          ) : (
-            <Button 
-              variant="contained" 
-              onClick={mode === 'create' ? handleNext : handleSubmit}
-            >
-              Next
-            </Button>
-          )}
+          <Button 
+            type="submit" 
+            variant="contained" 
+            color="primary"
+            disabled={loading}
+            sx={{ minWidth: '120px' }}
+          >
+            {loading ? 'Saving...' : (mode === 'create' ? 'Save Basic Info' : 'Save')}
+          </Button>
         </Box>
-
-        {mode === 'create' && activeStep === 1 && (
-          <Box sx={{ mt: 2 }}>
-            <Divider sx={{ mb: 2 }} />
-            <Button 
-              variant="contained" 
-              color="success"
-              onClick={submitCreate}
-              disabled={loading}
-              fullWidth
-            >
-              {loading ? 'Creating...' : 'Create Registration'}
-            </Button>
-          </Box>
-        )}
       </form>
     </Paper>
   );

@@ -5,7 +5,7 @@ import {
   TableCell, 
   TableContainer, 
   TableHead, 
- TableRow, 
+  TableRow, 
   Paper, 
   Button, 
   IconButton,
@@ -23,7 +23,7 @@ import {
   Grid,
   TablePagination
 } from '@mui/material';
-import { Edit, Delete, Print, Visibility } from '@mui/icons-material';
+import { Edit, Delete, Print, Visibility, Add } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { getAllRegisters, deleteRegister } from '../services/api';
 import RegisterForm from './RegisterForm';
@@ -34,6 +34,7 @@ const RegisterList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regNoSearch, setRegNoSearch] = useState('');
   const [editRegister, setEditRegister] = useState(null);
+  const [technicalRegister, setTechnicalRegister] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [viewRegister, setViewRegister] = useState(null);
   const [page, setPage] = useState(0);
@@ -93,6 +94,68 @@ const RegisterList = () => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handlePrint = (register) => {
+    const content = `
+      <html>
+        <head>
+          <title>UC Tyre Registration - ${register.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .section { margin-bottom: 15px; }
+            .section-title { font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+            .row { display: flex; margin-bottom: 5px; }
+            .label { font-weight: bold; width: 200px; }
+            .value { flex: 1; }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>UC Tyre Registration</h1>
+            <h2>Registration No: ${register.id}</h2>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Basic Information</div>
+            <div class="row"><div class="label">Received Date:</div><div class="value">${register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}</div></div>
+            <div class="row"><div class="label">Claim No:</div><div class="value">${register.claimNo}</div></div>
+            <div class="row"><div class="label">Dealer:</div><div class="value">${register.dealerName || register.dealerCode}</div></div>
+            <div class="row"><div class="label">Dealer Location:</div><div class="value">${register.dealerLocation || 'N/A'}</div></div>
+            <div class="row"><div class="label">Dealer View:</div><div class="value">${register.dealerView}</div></div>
+            <div class="row"><div class="label">Brand:</div><div class="value">${register.brand}</div></div>
+            <div class="row"><div class="label">Size:</div><div class="value">${register.size}</div></div>
+            <div class="row"><div class="label">Size Code:</div><div class="value">${register.sizeCode || 'N/A'}</div></div>
+          </div>
+          
+          ${register.obsDate ? `
+          <div class="section">
+            <div class="section-title">Technical Details</div>
+            <div class="row"><div class="label">Observation Date:</div><div class="value">${format(new Date(register.obsDate), 'dd/MM/yyyy')}</div></div>
+            <div class="row"><div class="label">Technical Observation:</div><div class="value">${register.techObs || 'N/A'}</div></div>
+            <div class="row"><div class="label">Remaining Tread Depth:</div><div class="value">${register.treadDepth || 'N/A'}</div></div>
+            <div class="row"><div class="label">Consultant Name:</div><div class="value">${register.consultantName || 'N/A'}</div></div>
+            <div class="row"><div class="label">Observation Status:</div><div class="value">${register.obsStatus || 'Pending'}</div></div>
+            <div class="row"><div class="label">Observation No:</div><div class="value">${register.obsNo || 'N/A'}</div></div>
+          </div>
+          ` : ''}
+          
+          <div class="no-print" style="margin-top: 20px; text-align: center;">
+            <button onclick="window.print()">Print</button>
+            <button onclick="window.close()">Close</button>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(content);
+    printWindow.document.close();
   };
 
   const filteredRegisters = registers.filter(register => 
@@ -163,6 +226,18 @@ const RegisterList = () => {
         />
       )}
 
+      {technicalRegister !== null && (
+        <RegisterForm
+          initialData={technicalRegister}
+          onSuccess={() => {
+            fetchRegisters();
+            setTechnicalRegister(null);
+          }}
+          mode="edit"
+          technicalMode={true}
+        />
+      )}
+
       <TableContainer component={Paper} elevation={3} sx={{ maxHeight: '60vh' }}>
         <Table stickyHeader>
           <TableHead sx={{ bgcolor: '#f5f5f5' }}>
@@ -218,14 +293,29 @@ const RegisterList = () => {
                         setEditRegister(registerData);
                       }} 
                       title="Edit"
-                      sx={{ color: '#424242' }} // Dark gray color
+                      sx={{ color: '#424242' }}
                     >
                       <Edit />
                     </IconButton>
+                    {!register.obsDate && (
+                      <IconButton 
+                        onClick={() => {
+                          // Create a copy with only register fields
+                          const registerData = { ...register };
+                          delete registerData.dealerName;
+                          delete registerData.dealerLocation;
+                          setTechnicalRegister(registerData);
+                        }} 
+                        title="Add Technical Info"
+                        sx={{ color: '#2e7d32' }}
+                      >
+                        <Add />
+                      </IconButton>
+                    )}
                     <IconButton onClick={() => setDeleteId(register.id)} title="Delete">
                       <Delete color="error" />
                     </IconButton>
-                    <IconButton title="Print">
+                    <IconButton onClick={() => handlePrint(register)} title="Print">
                       <Print />
                     </IconButton>
                   </TableCell>
@@ -377,7 +467,7 @@ const RegisterList = () => {
                 Edit
               </Button>
               <Button 
-                onClick={() => window.print()}
+                onClick={() => handlePrint(viewRegister)}
                 startIcon={<Print />}
               >
                 Print

@@ -12,6 +12,12 @@ class Register {
       }
     });
 
+    // Ensure dates are properly formatted
+    if (cleanedData.receivedDate) {
+      const date = new Date(cleanedData.receivedDate);
+      cleanedData.receivedDate = isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+    }
+
     console.log('Inserting data:', cleanedData);
     
     try {
@@ -65,7 +71,13 @@ class Register {
     const cleanedData = {};
     allowedFields.forEach(field => {
       if (updateData[field] !== undefined) {
-        cleanedData[field] = updateData[field] === '' ? null : updateData[field];
+        // Ensure date fields are properly formatted
+        if ((field === 'receivedDate' || field === 'obsDate') && updateData[field]) {
+          const date = new Date(updateData[field]);
+          cleanedData[field] = isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+        } else {
+          cleanedData[field] = updateData[field] === '' ? null : updateData[field];
+        }
       }
     });
 
