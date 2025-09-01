@@ -142,15 +142,6 @@ const ReportGenerator = () => {
           </FormControl>
         </Grid>
         <Grid item xs={12} sm={6} md={2}>
-          <TextField
-            fullWidth
-            label="Size"
-            name="size"
-            value={filters.size}
-            onChange={handleFilterChange}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
           <FormControl fullWidth>
             <InputLabel>Consultant</InputLabel>
             <Select
@@ -196,8 +187,14 @@ const ReportGenerator = () => {
                 <TableCell>Received Date</TableCell>
                 <TableCell>Claim No</TableCell>
                 <TableCell>Dealer</TableCell>
+                <TableCell>Dealer Code</TableCell>
                 <TableCell>Brand</TableCell>
                 <TableCell>Size</TableCell>
+                <TableCell>Size Code</TableCell>
+                <TableCell>Observation Date</TableCell>
+                <TableCell>Remaining Tread Depth</TableCell>
+                <TableCell>Technical Observation</TableCell>
+                <TableCell>Observation No</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Consultant</TableCell>
               </TableRow>
@@ -209,9 +206,15 @@ const ReportGenerator = () => {
                   <TableCell>{item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                   <TableCell>{item.claimNo}</TableCell>
                   <TableCell>{item.dealerName || item.dealerCode}</TableCell>
+                  <TableCell>{item.dealerCode}</TableCell>
                   <TableCell>{item.brand}</TableCell>
                   <TableCell>{item.size}</TableCell>
-                  <TableCell>{item.obsNo || 'Pending'}</TableCell>
+                  <TableCell>{item.sizeCode}</TableCell>
+                  <TableCell>{item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{item.treadDepth}</TableCell>
+                  <TableCell>{item.techObs}</TableCell>
+                  <TableCell>{item.obsNo || 'N/A'}</TableCell>
+                  <TableCell>{item.obsStatus}</TableCell>
                   <TableCell>{item.consultantName || 'N/A'}</TableCell>
                 </TableRow>
               ))}
