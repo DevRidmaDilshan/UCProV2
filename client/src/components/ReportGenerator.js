@@ -76,6 +76,7 @@ const ReportGenerator = () => {
       item.dealerName || item.dealerCode,
       item.brand,
       item.size,
+      item.serialNo,
       item.obsNo || 'Pending',
       item.consultantName || 'N/A'
     ].join(','));
@@ -210,6 +211,7 @@ const ReportGenerator = () => {
                   <TableCell>{item.brand}</TableCell>
                   <TableCell>{item.size}</TableCell>
                   <TableCell>{item.sizeCode}</TableCell>
+                  <TableCell>{item.serialNo}</TableCell>
                   <TableCell>{item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                   <TableCell>{item.treadDepth}</TableCell>
                   <TableCell>{item.techObs}</TableCell>

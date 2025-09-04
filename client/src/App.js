@@ -71,8 +71,8 @@ function App() {
         sx={{ backgroundColor: "#2E3B55" }}   // top bar color
       >
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            UCProV2 - Tyre Management System
+          <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>
+            Under Complaint Tyre Management System
           </Typography>
         </Toolbar>
 

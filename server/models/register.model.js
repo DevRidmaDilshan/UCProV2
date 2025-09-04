@@ -64,7 +64,7 @@ class Register {
     const allowedFields = [
       'receivedDate', 'claimNo', 'dealerView', 'dealerCode', 
       'sizeCode', 'brand', 'size', 'obsDate', 'techObs', 
-      'treadDepth', 'consultantName', 'obsNo', 'obsStatus'
+      'treadDepth', 'consultantName', 'obsNo', 'obsStatus','serialNo'
     ];
     
     // Filter the update data to only include allowed fields

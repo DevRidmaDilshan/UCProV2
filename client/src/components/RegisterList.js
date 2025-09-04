@@ -131,6 +131,7 @@ const RegisterList = () => {
             <div class="row"><div class="label">Brand:</div><div class="value">${register.brand}</div></div>
             <div class="row"><div class="label">Size:</div><div class="value">${register.size}</div></div>
             <div class="row"><div class="label">Size Code:</div><div class="value">${register.sizeCode || 'N/A'}</div></div>
+            <div class="row"><div class="label">Serial No & DOT:</div><div class="value">${register.serialNo || 'N/A'}</div></div>
           </div>
           
           ${register.obsDate ? `
@@ -163,6 +164,8 @@ const RegisterList = () => {
     (searchTerm ? (
       register.claimNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       register.dealerCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      register.serialNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      register.obsNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (register.dealerName && register.dealerName.toLowerCase().includes(searchTerm.toLowerCase()))
     ) : true)
   );
@@ -279,6 +282,7 @@ const RegisterList = () => {
                   <TableCell>{register.brand}</TableCell>
                   <TableCell>{register.size}</TableCell>
                   <TableCell>{register.sizeCode || 'N/A'}</TableCell>
+                  <TableCell>{register.serialNo}</TableCell>
                   <TableCell>{getStatusChip(register)}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
@@ -413,6 +417,10 @@ const RegisterList = () => {
                   <Grid item xs={6}>
                     <Typography variant="subtitle2">Size Code:</Typography>
                     <Typography>{viewRegister.sizeCode || 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Serial No & DOT:</Typography>
+                    <Typography>{viewRegister.serialNo || 'N/A'}</Typography>
                   </Grid>
                 </Grid>
 

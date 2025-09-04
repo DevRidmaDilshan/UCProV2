@@ -20,7 +20,6 @@ import {
   getInitialData, 
   getDealerByView, 
   getSizesByBrand, 
-  getSizeDetails,
   createRegister,
   updateRegister,
   getAllConsultants,
@@ -36,6 +35,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     brand: '',
     size: '',
     sizeCode: '',
+    serialNo:'',
     obsDate: format(new Date(), 'yyyy-MM-dd'),
     techObs: '',
     treadDepth: '',
@@ -52,20 +52,20 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Format date for display in input fields
+  // Format date for input
   const formatDateForInput = (dateString) => {
     if (!dateString) return format(new Date(), 'yyyy-MM-dd');
     try {
       const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString);
       return isNaN(date.getTime()) ? format(new Date(), 'yyyy-MM-dd') : format(date, 'yyyy-MM-dd');
-    } catch (error) {
+    } catch {
       return format(new Date(), 'yyyy-MM-dd');
     }
   };
 
   useEffect(() => {
     if (initialData) {
-      // Determine obsStatus based on obsNo
+      // Determine obsStatus
       let obsStatus = 'Pending';
       if (initialData.obsNo) {
         if (initialData.obsNo.startsWith('R')) {
@@ -76,7 +76,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           obsStatus = 'Forwarded for Management Decision';
         }
       }
-      
+
       setFormData(prev => ({
         ...prev,
         ...initialData,
@@ -84,6 +84,23 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         obsDate: formatDateForInput(initialData.obsDate),
         obsStatus
       }));
+
+      // 👉 ensure sizes load when editing
+      if (initialData.brand) {
+        getSizesByBrand(initialData.brand).then(({ data }) => {
+          setSizes(data.map(s => s.size));
+          setSizeOptions(data);
+
+          const selectedSize = data.find(s => s.sizeCode === initialData.sizeCode);
+          if (selectedSize) {
+            setFormData(prev => ({
+              ...prev,
+              size: selectedSize.size,
+              sizeCode: selectedSize.sizeCode
+            }));
+          }
+        });
+      }
     }
 
     const fetchInitialData = async () => {
@@ -91,7 +108,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         const { data } = await getInitialData();
         setDealerViews(data.dealerViews);
         setBrands(data.brands);
-        
+
         const consultantsRes = await getAllConsultants();
         setConsultants(consultantsRes.data);
       } catch (error) {
@@ -104,33 +121,25 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   useEffect(() => {
     if (formData.dealerView) {
-      const fetchDealer = async () => {
-        try {
-          const { data } = await getDealerByView(formData.dealerView);
+      getDealerByView(formData.dealerView)
+        .then(({ data }) => {
           setFormData(prev => ({
             ...prev,
             dealerCode: data.dealerCode
           }));
-        } catch (error) {
-          console.error('Error fetching dealer:', error);
-        }
-      };
-      fetchDealer();
+        })
+        .catch(err => console.error('Error fetching dealer:', err));
     }
   }, [formData.dealerView]);
 
   useEffect(() => {
     if (formData.brand) {
-      const fetchSizes = async () => {
-        try {
-          const { data } = await getSizesByBrand(formData.brand);
-          setSizes(data.map(size => size.size));
+      getSizesByBrand(formData.brand)
+        .then(({ data }) => {
+          setSizes(data.map(s => s.size));
           setSizeOptions(data);
-        } catch (error) {
-          console.error('Error fetching sizes:', error);
-        }
-      };
-      fetchSizes();
+        })
+        .catch(err => console.error('Error fetching sizes:', err));
     } else {
       setSizes([]);
       setSizeOptions([]);
@@ -140,8 +149,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   const handleSizeChange = (e, newValue) => {
     if (newValue) {
-      // Find the selected size object to get the sizeCode
-      const selectedSize = sizeOptions.find(size => size.size === newValue);
+      const selectedSize = sizeOptions.find(s => s.size === newValue);
       setFormData(prev => ({
         ...prev,
         size: newValue,
@@ -160,29 +168,21 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   const handleStatusChange = async (e) => {
     const { value } = e.target;
     setFormData(prev => ({ ...prev, obsStatus: value }));
-    
-    // If not Pending, generate the next observation number
+
     if (value !== 'Pending') {
       try {
         let type = '';
-        switch(value) {
-          case 'Recommended':
-            type = 'R';
-            break;
-          case 'Not Recommended':
-            type = 'NR';
-            break;
-          case 'Forwarded for Management Decision':
-            type = 'SCN';
-            break;
-          default:
-            return;
+        switch (value) {
+          case 'Recommended': type = 'R'; break;
+          case 'Not Recommended': type = 'NR'; break;
+          case 'Forwarded for Management Decision': type = 'SCN'; break;
+          default: return;
         }
-        
+
         const { data } = await getNextObservationNumber(type);
         setFormData(prev => ({ ...prev, obsNo: data.nextNumber }));
-      } catch (error) {
-        console.error('Error generating observation number:', error);
+      } catch (err) {
+        console.error('Error generating observation number:', err);
       }
     } else {
       setFormData(prev => ({ ...prev, obsNo: '' }));
@@ -191,17 +191,15 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate required fields
-    if (!formData.claimNo || !formData.dealerView || !formData.brand || !formData.size) {
+
+    if (!formData.claimNo || !formData.dealerView || !formData.brand || !formData.size || !formData.serialNo) {
       setMessage('Please fill all required fields');
       return;
     }
-    
+
     setLoading(true);
     try {
       if (mode === 'create') {
-        // For create mode, only save basic information
         const basicData = {
           receivedDate: formData.receivedDate,
           claimNo: formData.claimNo,
@@ -209,24 +207,20 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           dealerCode: formData.dealerCode,
           brand: formData.brand,
           size: formData.size,
-          sizeCode: formData.sizeCode
+          sizeCode: formData.sizeCode,
+          serialNo: formData.serialNo,
         };
-        
+
         const registerId = await createRegister(basicData);
         setMessage('Basic information saved successfully! Registration No: ' + registerId);
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
+        setTimeout(() => onSuccess(), 2000);
       } else {
-        // For edit mode, save all data
         await updateRegister(initialData.id, formData);
         setMessage('Registration updated successfully!');
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
+        setTimeout(() => onSuccess(), 2000);
       }
-    } catch (error) {
-      console.error('Error submitting form:', error);
+    } catch (err) {
+      console.error('Error submitting form:', err);
       setMessage('Error saving data. Please try again.');
     } finally {
       setLoading(false);
@@ -279,18 +273,14 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               <Grid item xs={12} sm={6} md={6}>
                 <Autocomplete
                   options={dealerViews}
-                  value={formData.dealerView}
+                  value={formData.dealerView || ''}
                   onChange={(e, newValue) => setFormData(prev => ({ ...prev, dealerView: newValue }))}
                   renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Dealer View"
-                      required
-                      fullWidth
-                    />
+                    <TextField {...params} label="Dealer View" required fullWidth />
                   )}
                   sx={{ minWidth: 250 }}
                   disabled={technicalMode}
+                  freeSolo
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
@@ -326,16 +316,13 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               <Grid item xs={12} sm={6} md={3}>
                 <Autocomplete
                   options={sizes}
-                  value={formData.size}
+                  value={formData.size || ''}
                   onChange={handleSizeChange}
                   renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Size"
-                      required
-                    />
+                    <TextField {...params} label="Size" required />
                   )}
                   disabled={technicalMode}
+                  freeSolo
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
@@ -348,6 +335,16 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   disabled
                 />
               </Grid>
+              <Grid item xs={12} sm={6} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Serial No & DOT"
+                    name="serialNo"
+                    value={formData.serialNo}
+                    onChange={handleChange}
+                    placeholder="Enter the Serial No & DOT here..."
+                  />
+                </Grid>
             </Grid>
           </CardContent>
         </Card>
@@ -389,9 +386,9 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                       label="Consultant Name"
                       onChange={handleChange}
                     >
-                      {consultants.map((consultant) => (
-                        <MenuItem key={consultant.consultantName} value={consultant.consultantName}>
-                          {consultant.consultantName}
+                      {consultants.map((c) => (
+                        <MenuItem key={c.consultantName} value={c.consultantName}>
+                          {c.consultantName}
                         </MenuItem>
                       ))}
                     </Select>
@@ -441,10 +438,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button
-            onClick={() => onSuccess()}
-            variant="outlined"
-          >
+          <Button onClick={() => onSuccess()} variant="outlined">
             Cancel
           </Button>
           
