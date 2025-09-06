@@ -97,63 +97,291 @@ const RegisterList = () => {
   };
 
   const handlePrint = (register) => {
+    // Determine header and note number based on observation status
+    let headerTitle = "CLAIM REFUND NOTE";
+    let noteNumberLabel = "CR No";
+    
+    if (register.obsStatus === 'Not Recommended') {
+      headerTitle = "NO REFUND NOTE";
+      noteNumberLabel = "NR No";
+    } else if (register.obsStatus === 'Forwarded for Management Decision') {
+      headerTitle = "SPECIAL CONSIDERATION NOTE";
+      noteNumberLabel = "SCN No";
+    }
+
     const content = `
-      <html>
-        <head>
-          <title>UC Tyre Registration - ${register.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .section { margin-bottom: 15px; }
-            .section-title { font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
-            .row { display: flex; margin-bottom: 5px; }
-            .label { font-weight: bold; width: 200px; }
-            .value { flex: 1; }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+      <meta charset="UTF-8">
+      <title>${headerTitle} - ${register.obsNo}</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 13px;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          width: 100%;
+          border: 1px solid #000;
+          padding: 10px;
+          box-sizing: border-box;
+        }
+
+        /* Header (top-right) */
+        .header {
+          text-align: right;
+          margin-bottom: 5px;
+        }
+        .header div {
+          margin: 2px 0;
+        }
+
+        /* Title */
+        .title {
+          text-align: center;
+          font-weight: bold;
+          font-size: 25px;
+          margin: 5px 0 15px;
+          text-transform: uppercase;
+          text-decoration: underline;
+        }
+
+        /* Generic table */
+        table {
+          border-collapse: collapse;
+          margin-bottom: 8px;
+        }
+        th, td {
+          border: 1px solid #000;
+          padding: 5px;
+          text-align: center;
+          vertical-align: middle;
+        }
+
+        /* Claim Info Table (small right box) */
+        .claim-info {
+          width: 45%;   /* control width */
+          margin-left: auto; /* push to right */
+          margin-bottom: 15px;
+        }
+        .claim-info th, .claim-info td {
+          height: 25px; /* control height */
+        }
+
+        /* Agent/Customer */
+        .agent-customer {
+          width: 100%;
+        }
+        .agent-customer th, .agent-customer td {
+          height: 30px;
+        }
+
+        /* Tyre details */
+        .tyre-details {
+          width: 100%;
+        }
+        .tyre-details th, .tyre-details td {
+          height: 25px;
+        }
+
+        /* Observations */
+        .observations {
+          width: 100%;
+        }
+        .observations td {
+          height: 60px; /* bigger height for text area */
+        }
+
+        /* Signatures row */
+        .signatures {
+          display: flex;
+          justify-content: space-between;
+          margin: 40px 0 20px;
+        }
+        .signature-box {
+          width: 45%;
+          text-align: center;
+        }
+
+        /* Refund Table */
+        .refund-table {
+          width: 60%; /* control size */
+          margin: 0 auto 20px auto; /* center it */
+        }
+        .refund-table th, .refund-table td {
+          height: 25px;
+        }
+
+        /* Approval */
+        .approval {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 30px;
+        }
+        .approval div {
+          width: 45%;
+        }
+
+        /* Footer */
+        .footer {
+          text-align: center;
+          font-size: 12px;
+          margin-top: 20px;
+          font-style: italic;
+        }
+        
+        @media print {
+          body { 
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            border: none;
+            padding: 0;
+          }
+          .no-print {
+            display: none;
+          }
+        }
+      </style>
+      </head>
+      <body>
+        <div class="container">
+
+          <!-- Header -->
           <div class="header">
-            <h1>UC Tyre Registration</h1>
-            <h2>Registration No: ${register.id}</h2>
+            <div>Reg. No: <b>${register.id}</b></div>
+            <div>${noteNumberLabel}: <b>${register.obsNo || 'N/A'}</b></div>
           </div>
+
+          <!-- Title -->
+          <div class="title">${headerTitle}</div>
+
+          <!-- Claim Info -->
+          <table class="claim-info">
+            <tr>
+              <th style="width: 50%;">Claim No</th>
+              <th>Date of Claim</th>
+            </tr>
+            <tr>
+              <td>${register.claimNo}</td>
+              <td></td>
+            </tr>
+          </table>
+
+          <!-- Agent / Customer -->
+          <table class="agent-customer" style="width:100%;">
+            <tr>
+              <th style="width: 50%;">AGENT</th>
+              <th>CUSTOMER</th>
+            </tr>
+            <tr>
+              <td>${register.dealerView || 'N/A'}</td>
+              <td></td>
+            </tr>
+          </table>
+
+          <!-- Tyre Details -->
+          <table class="tyre-details">
+            <tr>
+              <th style="width: 33%;">Brand</th>
+              <th style="width: 34%;">Size</th>
+              <th style="width: 33%;">Serial No</th>
+            </tr>
+            <tr>
+              <td>${register.brand}</td>
+              <td>${register.size}</td>
+              <td>${register.serialNo || 'N/A'}</td>
+            </tr>
+          </table>
+
+          <!-- Technical Observations -->
+          <table class="observations">
+            <tr>
+              <td style="width: 30%;"><b>Technical Observations :</b></td>
+              <td>${register.techObs || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><b>Remaining Tread Depth :</b></td>
+              <td>${register.treadDepth || 'N/A'}</td>
+            </tr>
+          </table>
+
+                <b>
+                  ${register.obsStatus === 'Recommended' 
+                    ? 'Refund : Recommended' 
+                    : register.obsStatus === 'Forwarded for Management Decision' 
+                      ? 'Forwarded for Management Decision' 
+                    : register.obsStatus === 'Not Recommended' 
+                      ? 'Refund : Not Recommended'
+                      : 'Refund : Not Recommended'}
+                </b>
           
-          <div class="section">
-            <div class="section-title">Basic Information</div>
-            <div class="row"><div class="label">Received Date:</div><div class="value">${register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}</div></div>
-            <div class="row"><div class="label">Claim No:</div><div class="value">${register.claimNo}</div></div>
-            <div class="row"><div class="label">Dealer:</div><div class="value">${register.dealerName || register.dealerCode}</div></div>
-            <div class="row"><div class="label">Dealer Location:</div><div class="value">${register.dealerLocation || 'N/A'}</div></div>
-            <div class="row"><div class="label">Dealer View:</div><div class="value">${register.dealerView}</div></div>
-            <div class="row"><div class="label">Brand:</div><div class="value">${register.brand}</div></div>
-            <div class="row"><div class="label">Size:</div><div class="value">${register.size}</div></div>
-            <div class="row"><div class="label">Size Code:</div><div class="value">${register.sizeCode || 'N/A'}</div></div>
-            <div class="row"><div class="label">Serial No & DOT:</div><div class="value">${register.serialNo || 'N/A'}</div></div>
+
+          <!-- Observation Date & Consultant -->
+          <div class="signatures">
+            <div class="signature-box">
+              ${register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'} <br>
+              <b>Date</b>
+            </div>
+            <div class="signature-box">
+              __________________________ <br>
+              <br>
+              <b>Consultant in Tyre Technology</b>
+            </div>
           </div>
-          
-          ${register.obsDate ? `
-          <div class="section">
-            <div class="section-title">Technical Details</div>
-            <div class="row"><div class="label">Observation Date:</div><div class="value">${format(new Date(register.obsDate), 'dd/MM/yyyy')}</div></div>
-            <div class="row"><div class="label">Technical Observation:</div><div class="value">${register.techObs || 'N/A'}</div></div>
-            <div class="row"><div class="label">Remaining Tread Depth:</div><div class="value">${register.treadDepth || 'N/A'}</div></div>
-            <div class="row"><div class="label">Consultant Name:</div><div class="value">${register.consultantName || 'N/A'}</div></div>
-            <div class="row"><div class="label">Observation Status:</div><div class="value">${register.obsStatus || 'Pending'}</div></div>
-            <div class="row"><div class="label">Observation No:</div><div class="value">${register.obsNo || 'N/A'}</div></div>
+          <br>
+          _________________________________________________________________________________________________<br>
+          <br>
+
+
+          <!-- Refund Table -->
+          <table class="refund-table">
+            <tr>
+              <th colspan="2">NSD</th>
+              <th colspan="2">Refund</th>
+            </tr>
+            <tr>
+              <th>Spec</th>
+              <th>Remaining</th>
+              <th>%</th>
+              <th>Rs.</th>
+            </tr>
+            <tr>
+              <td style="height: 30px;"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </table>
+
+          <!-- Approval -->
+          <div class="approval">
+            <div>Approved by:</div>
+            <div>Accepted by:</div>
           </div>
-          ` : ''}
-          
-          <div class="no-print" style="margin-top: 20px; text-align: center;">
-            <button onclick="window.print()">Print</button>
-            <button onclick="window.close()">Close</button>
+
+          <!-- Footer -->
+          <div class="footer">
+          _______________________________________________________________________<br>
+            <b><i>N.B.A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
           </div>
-        </body>
+        </div>
+        
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+        </div>
+      </body>
       </html>
     `;
-    
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(content);
     printWindow.document.close();
@@ -177,7 +405,7 @@ const RegisterList = () => {
   return (
     <Box>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-        UC Tyre Registers
+        UC Tyre Register
       </Typography>
       
       <Card sx={{ mb: 2 }}>
@@ -253,6 +481,7 @@ const RegisterList = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size Code</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Serial No</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
@@ -260,11 +489,11 @@ const RegisterList = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} align="center">Loading...</TableCell>
+                <TableCell colSpan={11} align="center">Loading...</TableCell>
               </TableRow>
             ) : filteredRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} align="center">No registers found</TableCell>
+                <TableCell colSpan={11} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
               filteredRegisters
@@ -282,7 +511,7 @@ const RegisterList = () => {
                   <TableCell>{register.brand}</TableCell>
                   <TableCell>{register.size}</TableCell>
                   <TableCell>{register.sizeCode || 'N/A'}</TableCell>
-                  <TableCell>{register.serialNo}</TableCell>
+                  <TableCell>{register.serialNo || 'N/A'}</TableCell>
                   <TableCell>{getStatusChip(register)}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
@@ -328,7 +557,7 @@ const RegisterList = () => {
             )}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={10} />
+                <TableCell colSpan={11} />
               </TableRow>
             )}
           </TableBody>
