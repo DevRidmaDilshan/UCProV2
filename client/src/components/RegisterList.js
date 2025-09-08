@@ -211,12 +211,13 @@ const RegisterList = () => {
 
         /* Refund Table */
         .refund-table {
-          width: 60%; /* control size */
-          margin: 0 auto 20px auto; /* center it */
+          width: 60%;              /* control size */
+          margin: 0 0 20px auto;   /* push to right */
         }
         .refund-table th, .refund-table td {
-          height: 25px;
+          height: 15px;
         }
+
 
         /* Approval */
         .approval {
@@ -256,7 +257,7 @@ const RegisterList = () => {
 
           <!-- Header -->
           <div class="header">
-            <div>Reg. No: <b>${register.id}</b></div>
+            <div>Reg. No:<b>${register.id}</b></div>
             <div>${noteNumberLabel}: <b>${register.obsNo || 'N/A'}</b></div>
           </div>
 
@@ -301,15 +302,17 @@ const RegisterList = () => {
             </tr>
           </table>
 
-          <!-- Technical Observations -->
+          <!-- Observations & Tread Depth -->
           <table class="observations">
             <tr>
-              <td style="width: 30%;"><b>Technical Observations :</b></td>
-              <td>${register.techObs || 'N/A'}</td>
+              <th style="width: 25%; text-align: left; height: 80px;">Technical Observations :</th>
+              <td style="width: 75%; height: 80px; text-align: center;">${register.techObs || 'N/A'}</td>
             </tr>
+          </table>
+          <table class="observations">
             <tr>
-              <td><b>Remaining Tread Depth :</b></td>
-              <td>${register.treadDepth || 'N/A'}</td>
+              <th style="width: 25%; text-align: left; height: 20px;">Remaining Tread Depth :</th>
+              <td style="width: 75%; height: 20px; text-align: center;">${register.treadDepth || 'N/A'}</td>
             </tr>
           </table>
 
@@ -328,6 +331,7 @@ const RegisterList = () => {
           <div class="signatures">
             <div class="signature-box">
               ${register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'} <br>
+              <br>
               <b>Date</b>
             </div>
             <div class="signature-box">
@@ -338,6 +342,7 @@ const RegisterList = () => {
           </div>
           <br>
           _________________________________________________________________________________________________<br>
+          <br>
           <br>
 
 
@@ -369,6 +374,7 @@ const RegisterList = () => {
 
           <!-- Footer -->
           <div class="footer">
+          <br><br>
           _______________________________________________________________________<br>
             <b><i>N.B.A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
           </div>

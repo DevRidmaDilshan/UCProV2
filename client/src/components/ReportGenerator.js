@@ -25,20 +25,30 @@ const ReportGenerator = () => {
     startDate: '',
     endDate: '',
     brand: '',
-    size: '',
+    obsStatus: '',
     consultant: ''
   });
+
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
+
+  // ✅ Static Observation Status values
+  const observationStatusOptions = [
+    'All Observations Status',
+    'Pending',
+    'Recommended',
+    'Not Recommended',
+    'Forwarded for Management Decision'
+  ];
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const { data } = await getInitialData();
         setBrands(data.brands);
-        
+
         const consultantsRes = await getAllConsultants();
         setConsultants(consultantsRes.data);
       } catch (error) {
@@ -68,7 +78,18 @@ const ReportGenerator = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Reg No', 'Received Date', 'Claim No', 'Dealer', 'Brand', 'Size', 'Status', 'Consultant'];
+    const headers = [
+      'Reg No',
+      'Received Date',
+      'Claim No',
+      'Dealer',
+      'Brand',
+      'Size',
+      'Serial No',
+      'Observaton No',
+      'Status',
+      'Consultant'
+    ];
     const csvData = reportData.map(item => [
       item.id,
       item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A',
@@ -77,7 +98,8 @@ const ReportGenerator = () => {
       item.brand,
       item.size,
       item.serialNo,
-      item.obsNo || 'Pending',
+      item.obsNo,
+      item.obsStatus || 'Pending',
       item.consultantName || 'N/A'
     ].join(','));
 
@@ -85,11 +107,11 @@ const ReportGenerator = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', 'uc_tyre_report.csv');
     link.style.visibility = 'hidden';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -101,6 +123,7 @@ const ReportGenerator = () => {
         Report Generator
       </Typography>
 
+      {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <TextField
@@ -124,6 +147,8 @@ const ReportGenerator = () => {
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
+
+        {/* Brand dropdown */}
         <Grid item xs={12} sm={6} md={2}>
           <FormControl fullWidth>
             <InputLabel>Brand</InputLabel>
@@ -142,6 +167,8 @@ const ReportGenerator = () => {
             </Select>
           </FormControl>
         </Grid>
+
+        {/* Consultant dropdown */}
         <Grid item xs={12} sm={6} md={2}>
           <FormControl fullWidth>
             <InputLabel>Consultant</InputLabel>
@@ -153,8 +180,30 @@ const ReportGenerator = () => {
             >
               <MenuItem value="">All Consultants</MenuItem>
               {consultants.map((consultant) => (
-                <MenuItem key={consultant.consultantName} value={consultant.consultantName}>
+                <MenuItem
+                  key={consultant.consultantName}
+                  value={consultant.consultantName}
+                >
                   {consultant.consultantName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+
+        {/* Observation Status dropdown */}
+        <Grid item xs={12} sm={6} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>Observation Status</InputLabel>
+            <Select
+              name="obsStatus"
+              value={filters.obsStatus}
+              label="Observation Status"
+              onChange={handleFilterChange}
+            >
+              {observationStatusOptions.map((status) => (
+                <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
+                  {status}
                 </MenuItem>
               ))}
             </Select>
@@ -162,16 +211,17 @@ const ReportGenerator = () => {
         </Grid>
       </Grid>
 
+      {/* Buttons */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleGenerateReport}
           disabled={loading}
         >
           {loading ? 'Generating...' : 'Generate Report'}
         </Button>
-        <Button 
-          variant="outlined" 
+        <Button
+          variant="outlined"
           onClick={handleExportCSV}
           disabled={reportData.length === 0}
         >
@@ -179,6 +229,7 @@ const ReportGenerator = () => {
         </Button>
       </Box>
 
+      {/* Report Table */}
       {reportData.length > 0 && (
         <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
           <Table stickyHeader size="small">
@@ -192,6 +243,7 @@ const ReportGenerator = () => {
                 <TableCell>Brand</TableCell>
                 <TableCell>Size</TableCell>
                 <TableCell>Size Code</TableCell>
+                <TableCell>Serial No</TableCell>
                 <TableCell>Observation Date</TableCell>
                 <TableCell>Remaining Tread Depth</TableCell>
                 <TableCell>Technical Observation</TableCell>
