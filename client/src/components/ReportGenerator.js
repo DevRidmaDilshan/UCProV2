@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Paper,
   Typography,
-  Grid,
   TextField,
   Button,
   FormControl,
@@ -34,7 +33,6 @@ const ReportGenerator = () => {
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
 
-  // ✅ Static Observation Status values
   const observationStatusOptions = [
     'All Observations Status',
     'Pending',
@@ -68,7 +66,13 @@ const ReportGenerator = () => {
     setLoading(true);
     try {
       const { data } = await generateReport(filters);
-      setReportData(data);
+
+      let filteredData = data;
+      if (filters.obsStatus) {
+        filteredData = data.filter(item => item.obsStatus === filters.obsStatus);
+      }
+
+      setReportData(filteredData);
     } catch (error) {
       console.error('Error generating report:', error);
       alert('Error generating report. Please try again.');
@@ -87,6 +91,7 @@ const ReportGenerator = () => {
       'Size',
       'Serial No',
       'Observaton No',
+      'Technical Observation',
       'Status',
       'Consultant'
     ];
@@ -99,6 +104,7 @@ const ReportGenerator = () => {
       item.size,
       item.serialNo,
       item.obsNo,
+      item.techObs,
       item.obsStatus || 'Pending',
       item.consultantName || 'N/A'
     ].join(','));
@@ -123,93 +129,81 @@ const ReportGenerator = () => {
         Report Generator
       </Typography>
 
-      {/* Filters */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="Start Date"
-            type="date"
-            name="startDate"
-            value={filters.startDate}
+      {/* Filters in one row */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <TextField
+          label="Start Date"
+          type="date"
+          name="startDate"
+          value={filters.startDate}
+          onChange={handleFilterChange}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 180 }}
+        />
+
+        <TextField
+          label="End Date"
+          type="date"
+          name="endDate"
+          value={filters.endDate}
+          onChange={handleFilterChange}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 180 }}
+        />
+
+        <FormControl sx={{ width: 200 }}>
+          <InputLabel>Brand</InputLabel>
+          <Select
+            name="brand"
+            value={filters.brand}
+            label="Brand"
             onChange={handleFilterChange}
-            InputLabelProps={{ shrink: true }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="End Date"
-            type="date"
-            name="endDate"
-            value={filters.endDate}
+          >
+            <MenuItem value="">All Brands</MenuItem>
+            {brands.map((brand) => (
+              <MenuItem key={brand} value={brand}>
+                {brand}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ width: 220 }}>
+          <InputLabel>Consultant</InputLabel>
+          <Select
+            name="consultant"
+            value={filters.consultant}
+            label="Consultant"
             onChange={handleFilterChange}
-            InputLabelProps={{ shrink: true }}
-          />
-        </Grid>
+          >
+            <MenuItem value="">All Consultants</MenuItem>
+            {consultants.map((consultant) => (
+              <MenuItem
+                key={consultant.consultantName}
+                value={consultant.consultantName}
+              >
+                {consultant.consultantName}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        {/* Brand dropdown */}
-        <Grid item xs={12} sm={6} md={2}>
-          <FormControl fullWidth>
-            <InputLabel>Brand</InputLabel>
-            <Select
-              name="brand"
-              value={filters.brand}
-              label="Brand"
-              onChange={handleFilterChange}
-            >
-              <MenuItem value="">All Brands</MenuItem>
-              {brands.map((brand) => (
-                <MenuItem key={brand} value={brand}>
-                  {brand}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {/* Consultant dropdown */}
-        <Grid item xs={12} sm={6} md={2}>
-          <FormControl fullWidth>
-            <InputLabel>Consultant</InputLabel>
-            <Select
-              name="consultant"
-              value={filters.consultant}
-              label="Consultant"
-              onChange={handleFilterChange}
-            >
-              <MenuItem value="">All Consultants</MenuItem>
-              {consultants.map((consultant) => (
-                <MenuItem
-                  key={consultant.consultantName}
-                  value={consultant.consultantName}
-                >
-                  {consultant.consultantName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {/* Observation Status dropdown */}
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Observation Status</InputLabel>
-            <Select
-              name="obsStatus"
-              value={filters.obsStatus}
-              label="Observation Status"
-              onChange={handleFilterChange}
-            >
-              {observationStatusOptions.map((status) => (
-                <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
-                  {status}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
+        <FormControl sx={{ width: 240 }}>
+          <InputLabel>Observation Status</InputLabel>
+          <Select
+            name="obsStatus"
+            value={filters.obsStatus}
+            label="Observation Status"
+            onChange={handleFilterChange}
+          >
+            {observationStatusOptions.map((status) => (
+              <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
+                {status}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
       {/* Buttons */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
@@ -232,11 +226,11 @@ const ReportGenerator = () => {
       {/* Report Table */}
       {reportData.length > 0 && (
         <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-          <Table stickyHeader size="small">
+          <Table stickyHeader size="small" sx={{ tableLayout: 'auto', width: '100%' }}>
             <TableHead>
               <TableRow>
-                <TableCell>Reg No</TableCell>
-                <TableCell>Received Date</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Reg No</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Received Date</TableCell>
                 <TableCell>Claim No</TableCell>
                 <TableCell>Dealer</TableCell>
                 <TableCell>Dealer Code</TableCell>
@@ -254,9 +248,13 @@ const ReportGenerator = () => {
             </TableHead>
             <TableBody>
               {reportData.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} sx={{ height: 50 }}> {/* uniform row height */}
                   <TableCell>{item.id}</TableCell>
-                  <TableCell>{item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                  <TableCell>
+                    {item.receivedDate
+                      ? format(new Date(item.receivedDate), 'dd/MM/yyyy')
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell>{item.claimNo}</TableCell>
                   <TableCell>{item.dealerName || item.dealerCode}</TableCell>
                   <TableCell>{item.dealerCode}</TableCell>
@@ -264,9 +262,15 @@ const ReportGenerator = () => {
                   <TableCell>{item.size}</TableCell>
                   <TableCell>{item.sizeCode}</TableCell>
                   <TableCell>{item.serialNo}</TableCell>
-                  <TableCell>{item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                  <TableCell>
+                    {item.obsDate
+                      ? format(new Date(item.obsDate), 'dd/MM/yyyy')
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell>{item.treadDepth}</TableCell>
-                  <TableCell>{item.techObs}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                    {item.techObs}
+                  </TableCell>
                   <TableCell>{item.obsNo || 'N/A'}</TableCell>
                   <TableCell>{item.obsStatus}</TableCell>
                   <TableCell>{item.consultantName || 'N/A'}</TableCell>
@@ -276,8 +280,10 @@ const ReportGenerator = () => {
           </Table>
         </TableContainer>
       )}
+
     </Paper>
   );
 };
 
 export default ReportGenerator;
+

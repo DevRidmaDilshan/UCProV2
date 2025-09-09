@@ -393,16 +393,20 @@ const RegisterList = () => {
     printWindow.document.close();
   };
 
-  const filteredRegisters = registers.filter(register => 
-    (regNoSearch ? register.id.toString().includes(regNoSearch) : true) &&
-    (searchTerm ? (
-      register.claimNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      register.dealerCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      register.serialNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      register.obsNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (register.dealerName && register.dealerName.toLowerCase().includes(searchTerm.toLowerCase()))
-    ) : true)
-  );
+  const filteredRegisters = registers.filter(register => {
+    const search = searchTerm?.toLowerCase() || '';
+    return (
+      (regNoSearch ? register.id?.toString().includes(regNoSearch) : true) &&
+      (search ? (
+        (register.claimNo ?? '').toLowerCase().includes(search) ||
+        (register.dealerCode ?? '').toLowerCase().includes(search) ||
+        (register.serialNo ?? '').toLowerCase().includes(search) ||
+        (register.obsNo ?? '').toLowerCase().includes(search) ||
+        (register.dealerName ?? '').toLowerCase().includes(search)
+      ) : true)
+    );
+  });
+
 
   // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =

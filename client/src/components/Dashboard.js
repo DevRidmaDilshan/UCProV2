@@ -1,169 +1,89 @@
-// Frontend/src/pages/Dashboard.js
-
-import React, { useState } from "react";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  TextField,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@mui/material";
-import { format } from "date-fns";
+import React, { useState } from 'react';
+import axios from 'axios';
+import { Button, TextField, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 
 const Dashboard = () => {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [data, setData] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  // Fetch data from backend
-  const handleGenerate = async () => {
+  const fetchData = async () => {
     if (!startDate || !endDate) {
-      alert("Please select start and end dates.");
+      alert('Please select start and end dates');
       return;
     }
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/dashboard?startDate=${startDate}&endDate=${endDate}`
-      );
-      const result = await response.json();
-      setData(result);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      const res = await axios.get(`http://localhost:5000/dashboard?startDate=${startDate}&endDate=${endDate}`);
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || 'Error fetching data');
     }
   };
 
-  // Export CSV
-  const handleExportCSV = () => {
-    if (data.length === 0) {
-      alert("No data to export.");
-      return;
-    }
-
-    const headers = [
-      "Brand",
-      "Total Received",
-      "Pending",
-      "R Count",
-      "NR Count",
-      "SCN Count",
-    ];
-
-    const csvData = data.map((item) =>
-      [
-        item.brand,
-        item.totalReceived,
-        item.pending,
-        item.rCount,
-        item.nrCount,
-        item.scnCount,
-      ].join(",")
-    );
-
-    const csvContent = [headers.join(","), ...csvData].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const downloadCSV = () => {
+    if (!data.length) return alert('No data to download');
+    const header = ['Brand','Total Received','Pending','R','NR','SCN'];
+    const rows = data.map(d => [d.brand, d.total_received, d.pending, d.r_count, d.nr_count, d.scn_count]);
+    const csvContent = [header, ...rows].map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "tyre_dashboard_report.csv");
-    document.body.appendChild(link);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dashboard_${startDate}_to_${endDate}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
   return (
-    <Box p={3}>
-      <Typography variant="h5" gutterBottom>
-        Tyre Dashboard Report
-      </Typography>
-      <Card>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Start Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="End Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={handleGenerate}
-              >
-                Generate
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+    <div style={{ padding: 20 }}>
+      <h2>Dashboard</h2>
+      <div style={{ marginBottom: 20 }}>
+        <TextField
+          label="Start Date"
+          type="date"
+          value={startDate}
+          onChange={e => setStartDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          style={{ marginRight: 10 }}
+        />
+        <TextField
+          label="End Date"
+          type="date"
+          value={endDate}
+          onChange={e => setEndDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          style={{ marginRight: 10 }}
+        />
+        <Button variant="contained" color="primary" onClick={fetchData}>Fetch</Button>
+        <Button variant="outlined" color="secondary" onClick={downloadCSV} style={{ marginLeft: 10 }}>Download CSV</Button>
+      </div>
 
-      {data.length > 0 && (
-        <Box mt={3}>
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={handleExportCSV}
-            sx={{ mb: 2 }}
-          >
-            Download CSV
-          </Button>
-
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Brand</TableCell>
-                  <TableCell>Total Received</TableCell>
-                  <TableCell>Pending</TableCell>
-                  <TableCell>R Count</TableCell>
-                  <TableCell>NR Count</TableCell>
-                  <TableCell>SCN Count</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.map((row, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{row.brand}</TableCell>
-                    <TableCell>{row.totalReceived}</TableCell>
-                    <TableCell>{row.pending}</TableCell>
-                    <TableCell>{row.rCount}</TableCell>
-                    <TableCell>{row.nrCount}</TableCell>
-                    <TableCell>{row.scnCount}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-      )}
-    </Box>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Brand</TableCell>
+            <TableCell>Total Received</TableCell>
+            <TableCell>Pending</TableCell>
+            <TableCell>R</TableCell>
+            <TableCell>NR</TableCell>
+            <TableCell>SCN</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, idx) => (
+            <TableRow key={idx}>
+              <TableCell>{row.brand}</TableCell>
+              <TableCell>{row.total_received}</TableCell>
+              <TableCell>{row.pending}</TableCell>
+              <TableCell>{row.r_count}</TableCell>
+              <TableCell>{row.nr_count}</TableCell>
+              <TableCell>{row.scn_count}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
 export default Dashboard;
-

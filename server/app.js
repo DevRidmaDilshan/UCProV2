@@ -6,6 +6,8 @@ const dashboardRoutes = require("./routes/dashboard");
 
 const app = express();
 
+
+
 // CORS configuration
 app.use(cors({
   origin: 'http://localhost:3000', // Your React app's URL
@@ -26,7 +28,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
+// const PORT = process.env.PORT || 5000;
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
+
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Dashboard route
+app.use('/dashboard', dashboardRoute);

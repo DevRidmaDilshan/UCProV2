@@ -33,4 +33,7 @@ router.post('/reports', registerController.generateReport);
 // ------------------- Dashboard routes -------------------
 router.get('/dashboard', registerController.getDashboardData);
 
+// Add this to your routes
+router.post('/brand-report', registerController.generateBrandReport);
+
 module.exports = router;

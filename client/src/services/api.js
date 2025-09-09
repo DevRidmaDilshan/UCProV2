@@ -40,3 +40,4 @@ export const getAllConsultants = () => api.get('/consultants/all');
 export const getNextObservationNumber = (type) => api.get(`/observation-number/${type}`);
 export const getDashboardData = () => api.get('/dashboard');
 export const generateReport = (filters) => api.post('/reports', filters);
+export const generateBrandReport = (filters) => api.post('/brand-report', filters);

@@ -349,3 +349,44 @@ exports.getNextObservationNumber = async (req, res) => {
     });
   }
 };
+
+exports.generateBrandReport = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+    
+    let query = `
+      SELECT 
+        brand,
+        COUNT(*) as totalCount,
+        SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pendingCount,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommendedCount,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as notRecommendedCount,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as managementDecisionCount
+      FROM registers
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (startDate) {
+      query += ' AND receivedDate >= ?';
+      params.push(startDate);
+    }
+    
+    if (endDate) {
+      query += ' AND receivedDate <= ?';
+      params.push(endDate);
+    }
+    
+    query += ' GROUP BY brand ORDER BY totalCount DESC';
+    
+    const [rows] = await db.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error generating brand report:', error);
+    res.status(500).json({ 
+      message: 'Error generating brand report',
+      error: error.message 
+    });
+  }
+};
