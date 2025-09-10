@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db'); // your MySQL connection
+const db = require('../config/db');
 
 // GET dashboard stats by brand between dates
 router.get('/', async (req, res) => {
@@ -15,9 +15,9 @@ router.get('/', async (req, res) => {
       SELECT brand,
         COUNT(*) AS total_received,
         SUM(CASE WHEN obsStatus = 'Pending' THEN 1 ELSE 0 END) AS pending,
-        SUM(CASE WHEN obsStatus = 'R' THEN 1 ELSE 0 END) AS r_count,
-        SUM(CASE WHEN obsStatus = 'NR' THEN 1 ELSE 0 END) AS nr_count,
-        SUM(CASE WHEN obsStatus = 'SCN' THEN 1 ELSE 0 END) AS scn_count
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) AS recommended,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) AS nr_count,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) AS scn_count
       FROM registers
       WHERE receivedDate BETWEEN ? AND ?
       GROUP BY brand
@@ -25,10 +25,6 @@ router.get('/', async (req, res) => {
     `;
 
     const [rows] = await db.query(query, [startDate, endDate]);
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Register not found' });
-    }
 
     res.json(rows);
   } catch (err) {
@@ -38,3 +34,4 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router;
+

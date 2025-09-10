@@ -294,8 +294,8 @@ exports.getDashboardData = async (req, res) => {
       SELECT 
         SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
-        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as notRecommended,
-        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as managementDecision,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_count,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count,
         COUNT(*) as total
       FROM registers
     `);
@@ -322,7 +322,7 @@ exports.getDashboardData = async (req, res) => {
     `);
     
     res.json({
-      statusCounts: statusCounts[0] || { pending: 0, recommended: 0, notRecommended: 0, managementDecision: 0, total: 0 },
+      statusCounts: statusCounts[0] || { pending: 0, recommended: 0, nr_count: 0, scn_count: 0, total: 0 },
       brandCounts: brandCounts || [],
       monthlyCounts: monthlyCounts || []
     });
@@ -358,10 +358,10 @@ exports.generateBrandReport = async (req, res) => {
       SELECT 
         brand,
         COUNT(*) as totalCount,
-        SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pendingCount,
-        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommendedCount,
-        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as notRecommendedCount,
-        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as managementDecisionCount
+        SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_ount,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count
       FROM registers
       WHERE 1=1
     `;

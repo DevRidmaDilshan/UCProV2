@@ -13,7 +13,9 @@ const Dashboard = () => {
       return;
     }
     try {
-      const res = await axios.get(`http://localhost:5000/dashboard?startDate=${startDate}&endDate=${endDate}`);
+      const res = await axios.get(
+        `http://localhost:5000/api/dashboard?startDate=${startDate}&endDate=${endDate}`
+      );
       setData(res.data);
     } catch (err) {
       console.error(err);
@@ -24,7 +26,7 @@ const Dashboard = () => {
   const downloadCSV = () => {
     if (!data.length) return alert('No data to download');
     const header = ['Brand','Total Received','Pending','R','NR','SCN'];
-    const rows = data.map(d => [d.brand, d.total_received, d.pending, d.r_count, d.nr_count, d.scn_count]);
+    const rows = data.map(d => [d.brand, d.total_received, d.pending, d.recommended, d.nr_count, d.scn_count]);
     const csvContent = [header, ...rows].map(e => e.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -75,7 +77,7 @@ const Dashboard = () => {
               <TableCell>{row.brand}</TableCell>
               <TableCell>{row.total_received}</TableCell>
               <TableCell>{row.pending}</TableCell>
-              <TableCell>{row.r_count}</TableCell>
+              <TableCell>{row.recommended}</TableCell>
               <TableCell>{row.nr_count}</TableCell>
               <TableCell>{row.scn_count}</TableCell>
             </TableRow>

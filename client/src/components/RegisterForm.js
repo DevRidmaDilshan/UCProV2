@@ -403,7 +403,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                       label="Observation Status"
                       onChange={handleStatusChange}
                     >
-                      <MenuItem value="Pending">Pending</MenuItem>
+                      <MenuItem value="">Pending</MenuItem>
                       <MenuItem value="Recommended">Recommended</MenuItem>
                       <MenuItem value="Not Recommended">Not Recommended</MenuItem>
                       <MenuItem value="Forwarded for Management Decision">Forwarded for Management Decision</MenuItem>
