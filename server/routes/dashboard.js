@@ -12,12 +12,18 @@ router.get('/', async (req, res) => {
 
   try {
     const query = `
-      SELECT brand,
+      SELECT 
+        brand,
         COUNT(*) AS total_received,
+        ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS total_received_percent,
         SUM(CASE WHEN obsStatus = 'Pending' THEN 1 ELSE 0 END) AS pending,
+        ROUND(SUM(CASE WHEN obsStatus = 'Pending' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS pending_percent,
         SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) AS recommended,
+        ROUND(SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS recommended_percent,
         SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) AS nr_count,
-        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) AS scn_count
+        ROUND(SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS nr_percent,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) AS scn_count,
+        ROUND(SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS scn_percent
       FROM registers
       WHERE receivedDate BETWEEN ? AND ?
       GROUP BY brand

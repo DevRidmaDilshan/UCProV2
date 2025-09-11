@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { generateReport, getInitialData, getAllConsultants } from '../services/api';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 const ReportGenerator = () => {
   const [filters, setFilters] = useState({
@@ -81,46 +82,60 @@ const ReportGenerator = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      'Reg No',
-      'Received Date',
-      'Claim No',
-      'Dealer',
-      'Brand',
-      'Size',
-      'Serial No',
-      'Observaton No',
-      'Technical Observation',
-      'Status',
-      'Consultant'
+  const handleExportExcel = () => {
+    if (reportData.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Define worksheet data
+    const worksheetData = reportData.map(item => ({
+      'Reg No': item.id,
+      'Received Date': item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A',
+      'Claim No': item.claimNo,
+      'Dealer': item.dealerName || item.dealerCode,
+      'Dealer Code': item.dealerCode,
+      'Brand': item.brand,
+      'Size': item.size,
+      'Size Code': item.sizeCode,
+      'Serial No': item.serialNo,
+      'Observation Date': item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A',
+      'Remaining Tread Depth': item.treadDepth,
+      'Technical Observation': item.techObs,
+      'Observation No': item.obsNo || 'N/A',
+      'Status': item.obsStatus || 'Pending',
+      'Consultant': item.consultantName || 'N/A'
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 8 },  // Reg No
+      { wch: 12 }, // Received Date
+      { wch: 12 }, // Claim No
+      { wch: 15 }, // Dealer
+      { wch: 12 }, // Dealer Code
+      { wch: 10 }, // Brand
+      { wch: 8 },  // Size
+      { wch: 10 }, // Size Code
+      { wch: 12 }, // Serial No
+      { wch: 15 }, // Observation Date
+      { wch: 20 }, // Remaining Tread Depth
+      { wch: 30 }, // Technical Observation
+      { wch: 15 }, // Observation No
+      { wch: 20 }, // Status
+      { wch: 15 }  // Consultant
     ];
-    const csvData = reportData.map(item => [
-      item.id,
-      item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A',
-      item.claimNo,
-      item.dealerName || item.dealerCode,
-      item.brand,
-      item.size,
-      item.serialNo,
-      item.obsNo,
-      item.techObs,
-      item.obsStatus || 'Pending',
-      item.consultantName || 'N/A'
-    ].join(','));
-
-    const csvContent = [headers.join(','), ...csvData].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'uc_tyre_report.csv');
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ws['!cols'] = colWidths;
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "UC Tyre Report");
+    
+    // Generate Excel file and download
+    XLSX.writeFile(wb, `uc_tyre_report_${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.xlsx`);
   };
 
   return (
@@ -216,10 +231,10 @@ const ReportGenerator = () => {
         </Button>
         <Button
           variant="outlined"
-          onClick={handleExportCSV}
+          onClick={handleExportExcel}
           disabled={reportData.length === 0}
         >
-          Export to CSV
+          Export to Excel
         </Button>
       </Box>
 
@@ -280,10 +295,8 @@ const ReportGenerator = () => {
           </Table>
         </TableContainer>
       )}
-
     </Paper>
   );
 };
 
 export default ReportGenerator;
-
