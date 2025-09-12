@@ -492,6 +492,7 @@ const RegisterList = () => {
               <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Size Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Serial No</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Observation NO</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
             </TableRow>
@@ -522,6 +523,7 @@ const RegisterList = () => {
                   <TableCell>{register.size}</TableCell>
                   <TableCell>{register.sizeCode || 'N/A'}</TableCell>
                   <TableCell>{register.serialNo || 'N/A'}</TableCell>
+                  <TableCell>{register.obsNo || 'N/A'}</TableCell>
                   <TableCell>{getStatusChip(register)}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">

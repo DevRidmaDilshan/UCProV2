@@ -79,7 +79,7 @@ const Dashboard = () => {
 
     const doc = new jsPDF();
     doc.setFontSize(14);
-    doc.text(`Dashboard Report (${startDate} to ${endDate})`, 14, 15);
+    doc.text(`Brand Wise Summarize Report (${startDate} to ${endDate})`, 14, 15);
 
     const tableColumn = [
       "Brand","Total Received","Total Received %","Pending","Pending %","R","R %","NR","NR %","SCN","SCN %"
@@ -131,7 +131,7 @@ const Dashboard = () => {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Dashboard</h2>
+      <h2>Brand Wise Summarize Report</h2>
       <div style={{ marginBottom: 20 }}>
         <TextField
           label="Start Date"
@@ -171,54 +171,54 @@ const Dashboard = () => {
       </div>
 
       {/* ✅ Table with strong borders */}
-      <TableContainer component={Paper} sx={{ border: '2px solid black' }}>
-        <Table sx={{ border: '2px solid black' }}>
+      <TableContainer component={Paper} sx={{ border: '1px solid black' }}>
+        <Table sx={{ border: '1px solid black' }}>
           <TableHead>
             <TableRow>
               {[
                 "Brand","Total Received","Total Received %","Pending","Pending %","R","R %","NR","NR %","SCN","SCN %"
               ].map((head) => (
-                <TableCell key={head} sx={{ border: '2px solid black', fontWeight: 'bold' }}>{head}</TableCell>
+                <TableCell key={head} sx={{ border: '1px solid black', fontWeight: 'bold' }}>{head}</TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {data.map((row, idx) => (
               <TableRow key={idx}>
-                <TableCell sx={{ border: '2px solid black' }}>{row.brand}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.total_received}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.total_received_percent}%</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.pending}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.pending_percent}%</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.recommended}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.recommended_percent}%</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.nr_count}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.nr_percent}%</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.scn_count}</TableCell>
-                <TableCell sx={{ border: '2px solid black' }}>{row.scn_percent}%</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.brand}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.total_received}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.total_received_percent}%</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.pending}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.pending_percent}%</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.recommended}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.recommended_percent}%</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.nr_count}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.nr_percent}%</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.scn_count}</TableCell>
+                <TableCell sx={{ border: '1px solid black' }}>{row.scn_percent}%</TableCell>
               </TableRow>
             ))}
 
             {/* ✅ Grand Total Row */}
             {data.length > 0 && (
               <TableRow sx={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>Grand Total Tyre</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>{totals.total_received}</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>100%</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>{totals.pending}</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>Grand Total Tyre</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>{totals.total_received}</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>100%</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>{totals.pending}</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>
                   {((totals.pending / totals.total_received) * 100).toFixed(2)}%
                 </TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>{totals.recommended}</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>{totals.recommended}</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>
                   {((totals.recommended / totals.total_received) * 100).toFixed(2)}%
                 </TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>{totals.nr_count}</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>{totals.nr_count}</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>
                   {((totals.nr_count / totals.total_received) * 100).toFixed(2)}%
                 </TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>{totals.scn_count}</TableCell>
-                <TableCell sx={{ border: '2px solid black', fontWeight: 'bold' }}>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>{totals.scn_count}</TableCell>
+                <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>
                   {((totals.scn_count / totals.total_received) * 100).toFixed(2)}%
                 </TableCell>
               </TableRow>

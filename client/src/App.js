@@ -90,12 +90,16 @@ function App() {
             sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
           />
           <Tab 
-            label="Registers" 
+            label="Register" 
             sx={{ color: tabValue === 1 ? "#4caf50" : "#ffffff" }} 
           />
           <Tab 
             label="Reports" 
             sx={{ color: tabValue === 2 ? "#2196f3" : "#ffffff" }} 
+          />
+          <Tab 
+            label="Daily Report" 
+            sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
           />
         </Tabs>
       </AppBar>

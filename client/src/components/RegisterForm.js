@@ -6,7 +6,6 @@ import {
   Select, 
   FormControl, 
   InputLabel, 
-  Grid, 
   Paper, 
   Typography,
   Autocomplete,
@@ -65,7 +64,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   useEffect(() => {
     if (initialData) {
-      // Determine obsStatus
       let obsStatus = 'Pending';
       if (initialData.obsNo) {
         if (initialData.obsNo.startsWith('R')) {
@@ -85,7 +83,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         obsStatus
       }));
 
-      // 👉 ensure sizes load when editing
       if (initialData.brand) {
         getSizesByBrand(initialData.brand).then(({ data }) => {
           setSizes(data.map(s => s.size));
@@ -228,7 +225,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3, maxWidth: '1200px', mx: 'auto' }}>
+    <Paper elevation={3} sx={{ p: 3, mb: 3, maxWidth: '900px', mx: 'auto' }}>
       <Typography variant="h5" gutterBottom>
         {technicalMode ? 'Add Technical Information' : mode === 'create' ? 'Add New UC Tyre' : 'Edit UC Tyre'}
       </Typography>
@@ -240,199 +237,199 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       )}
 
       <form onSubmit={handleSubmit}>
+        {/* Basic Information */}
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Basic Information
             </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Received Date"
-                  type="date"
-                  name="receivedDate"
-                  value={formData.receivedDate}
+
+            {/* Row 1: Received Date + Claim No */}
+            <Box display="flex" gap={2} mb={2}>
+              <TextField
+                fullWidth
+                label="Received Date"
+                type="date"
+                name="receivedDate"
+                value={formData.receivedDate}
+                onChange={handleChange}
+                InputLabelProps={{ shrink: true }}
+                required
+                // disabled={technicalMode}
+              />
+              <TextField
+                fullWidth
+                label="Claim No"
+                name="claimNo"
+                value={formData.claimNo}
+                onChange={handleChange}
+                required
+                // disabled={technicalMode}
+              />
+            </Box>
+
+            {/* Row 2: Dealer View + Dealer Code */}
+            <Box display="flex" gap={2} mb={2}>
+              <Autocomplete
+                options={dealerViews}
+                value={formData.dealerView || ''}
+                onChange={(e, newValue) => setFormData(prev => ({ ...prev, dealerView: newValue }))}
+                renderInput={(params) => (
+                  <TextField {...params} label="Dealer View" required fullWidth />
+                )}
+                // disabled={technicalMode}
+                freeSolo
+                sx={{ flex: 3 }}   // Dealer View takes more width
+              />
+              <TextField
+                label="Dealer Code"
+                name="dealerCode"
+                value={formData.dealerCode}
+                onChange={handleChange}
+                disabled
+                sx={{ flex: 1 }}   // Dealer Code takes less width
+              />
+            </Box>
+
+
+            {/* Row 3: Brand + Size */}
+            <Box display="flex" gap={2} mb={2}>
+              <FormControl sx={{ flex: 1 }}>   {/* Small width for Brand */}
+                <InputLabel>Brand</InputLabel>
+                <Select
+                  name="brand"
+                  value={formData.brand}
+                  label="Brand"
                   onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
                   required
-                  disabled={technicalMode}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Claim No"
-                  name="claimNo"
-                  value={formData.claimNo}
-                  onChange={handleChange}
-                  required
-                  disabled={technicalMode}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={6}>
-                <Autocomplete
-                  options={dealerViews}
-                  value={formData.dealerView || ''}
-                  onChange={(e, newValue) => setFormData(prev => ({ ...prev, dealerView: newValue }))}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Dealer View" required fullWidth />
-                  )}
-                  sx={{ minWidth: 250 }}
-                  disabled={technicalMode}
-                  freeSolo
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Dealer Code"
-                  name="dealerCode"
-                  value={formData.dealerCode}
-                  onChange={handleChange}
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Brand</InputLabel>
-                  <Select
-                    name="brand"
-                    value={formData.brand}
-                    label="Brand"
-                    onChange={handleChange}
-                    required
-                    sx={{ minWidth: 250 }}
-                    disabled={technicalMode}
-                  >
-                    {brands.map((brand) => (
-                      <MenuItem key={brand} value={brand}>
-                        {brand}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Autocomplete
-                  options={sizes}
-                  value={formData.size || ''}
-                  onChange={handleSizeChange}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Size" required />
-                  )}
-                  disabled={technicalMode}
-                  freeSolo
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Size Code"
-                  name="sizeCode"
-                  value={formData.sizeCode}
-                  onChange={handleChange}
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Serial No & DOT"
-                    name="serialNo"
-                    value={formData.serialNo}
-                    onChange={handleChange}
-                    placeholder="Enter the Serial No & DOT here..."
-                  />
-                </Grid>
-            </Grid>
+                  // disabled={technicalMode}
+                >
+                  {brands.map((brand) => (
+                    <MenuItem key={brand} value={brand}>
+                      {brand}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Autocomplete
+                options={sizes}
+                value={formData.size || ''}
+                onChange={handleSizeChange}
+                renderInput={(params) => (
+                  <TextField {...params} label="Size" required fullWidth />
+                )}
+                // disabled={technicalMode}
+                freeSolo
+                sx={{ flex: 3 }} 
+              />
+            </Box>
+
+
+            {/* Row 4: Size Code + Serial No */}
+            <Box display="flex" gap={2}>
+              <TextField
+                fullWidth
+                label="Size Code"
+                name="sizeCode"
+                value={formData.sizeCode}
+                onChange={handleChange}
+                disabled
+              />
+              <TextField
+                fullWidth
+                label="Serial No & DOT"
+                name="serialNo"
+                value={formData.serialNo}
+                onChange={handleChange}
+                placeholder="Enter the Serial No & DOT here..."
+              />
+            </Box>
           </CardContent>
         </Card>
 
+        {/* Technical Section */}
         {(mode === 'edit' || technicalMode) && (
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Technical Details
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Observation Date"
-                    type="date"
-                    name="obsDate"
-                    value={formData.obsDate}
+
+              <Box display="flex" gap={2} mb={2}>
+                <TextField
+                  fullWidth
+                  label="Observation Date"
+                  type="date"
+                  name="obsDate"
+                  value={formData.obsDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  fullWidth
+                  label="Remaining Tread Depth"
+                  name="treadDepth"
+                  value={formData.treadDepth}
+                  onChange={handleChange}
+                  placeholder="e.g., 6,6,6,6"
+                />
+              </Box>
+
+              <Box display="flex" gap={2} mb={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Consultant Name</InputLabel>
+                  <Select
+                    name="consultantName"
+                    value={formData.consultantName}
+                    label="Consultant Name"
                     onChange={handleChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Remaining Tread Depth"
-                    name="treadDepth"
-                    value={formData.treadDepth}
-                    onChange={handleChange}
-                    placeholder="e.g., 6,6,6,6"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Consultant Name</InputLabel>
-                    <Select
-                      name="consultantName"
-                      value={formData.consultantName}
-                      label="Consultant Name"
-                      onChange={handleChange}
-                    >
-                      {consultants.map((c) => (
-                        <MenuItem key={c.consultantName} value={c.consultantName}>
-                          {c.consultantName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Observation Status</InputLabel>
-                    <Select
-                      name="obsStatus"
-                      value={formData.obsStatus}
-                      label="Observation Status"
-                      onChange={handleStatusChange}
-                    >
-                      <MenuItem value="">Pending</MenuItem>
-                      <MenuItem value="Recommended">Recommended</MenuItem>
-                      <MenuItem value="Not Recommended">Not Recommended</MenuItem>
-                      <MenuItem value="Forwarded for Management Decision">Forwarded for Management Decision</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Observation Number"
-                    name="obsNo"
-                    value={formData.obsNo}
-                    onChange={handleChange}
-                    disabled
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Technical Observation"
-                    name="techObs"
-                    value={formData.techObs}
-                    onChange={handleChange}
-                    multiline
-                    rows={4}
-                    placeholder="Enter technical observations here..."
-                  />
-                </Grid>
-              </Grid>
+                  >
+                    {consultants.map((c) => (
+                      <MenuItem key={c.consultantName} value={c.consultantName}>
+                        {c.consultantName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel>Observation Status</InputLabel>
+                  <Select
+                    name="obsStatus"
+                    value={formData.obsStatus}
+                    label="Observation Status"
+                    onChange={handleStatusChange}
+                  >
+                    <MenuItem value="">Pending</MenuItem>
+                    <MenuItem value="Recommended">Recommended</MenuItem>
+                    <MenuItem value="Not Recommended">Not Recommended</MenuItem>
+                    <MenuItem value="Forwarded for Management Decision">Forwarded for Management Decision</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              <Box display="flex" gap={2} mb={2}>
+                <TextField
+                  fullWidth
+                  label="Observation Number"
+                  name="obsNo"
+                  value={formData.obsNo}
+                  onChange={handleChange}
+                  disabled
+                />
+              </Box>
+
+              <TextField
+                fullWidth
+                label="Technical Observation"
+                name="techObs"
+                value={formData.techObs}
+                onChange={handleChange}
+                multiline
+                rows={4}
+                placeholder="Enter technical observations here..."
+              />
             </CardContent>
           </Card>
         )}
@@ -441,7 +438,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           <Button onClick={() => onSuccess()} variant="outlined">
             Cancel
           </Button>
-          
           <Button 
             type="submit" 
             variant="contained" 
