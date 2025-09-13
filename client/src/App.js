@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import RegisterList from './components/RegisterList';
 import Dashboard from './components/Dashboard';
+import DailyReport from './components/DailyReport';
 import ReportGenerator from './components/ReportGenerator';
 
 // Create a custom theme
@@ -86,33 +87,37 @@ function App() {
           }}
         >
           <Tab 
-            label="Dashboard" 
-            sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
-          />
-          <Tab 
             label="Register" 
             sx={{ color: tabValue === 1 ? "#4caf50" : "#ffffff" }} 
           />
           <Tab 
-            label="Reports" 
-            sx={{ color: tabValue === 2 ? "#2196f3" : "#ffffff" }} 
+            label="Dashboard" 
+            sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
           />
           <Tab 
             label="Daily Report" 
             sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
           />
+          <Tab 
+            label="Reports" 
+            sx={{ color: tabValue === 2 ? "#2196f3" : "#ffffff" }} 
+          />
+          
         </Tabs>
       </AppBar>
 
       {/* Tab Content */}
       <Container maxWidth="xl">
         <TabPanel value={tabValue} index={0}>
-          <Dashboard />
-        </TabPanel>
-        <TabPanel value={tabValue} index={1}>
           <RegisterList />
         </TabPanel>
+        <TabPanel value={tabValue} index={1}>
+          <Dashboard />
+        </TabPanel>
         <TabPanel value={tabValue} index={2}>
+          <DailyReport />
+        </TabPanel>
+        <TabPanel value={tabValue} index={3}>
           <ReportGenerator />
         </TabPanel>
       </Container>

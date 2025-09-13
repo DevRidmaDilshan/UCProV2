@@ -335,6 +335,54 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+exports.getDailyReportData = async (req, res) => {
+  try {
+    // Get counts by status using obsStatus field
+    const [statusCounts] = await db.query(`
+      SELECT 
+        SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_count,
+        SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count,
+        COUNT(*) as total
+      FROM registers
+    `);
+    
+    // Get counts by brand
+    const [brandCounts] = await db.query(`
+      SELECT brand, COUNT(*) as count
+      FROM registers
+      WHERE brand IS NOT NULL AND brand != ''
+      GROUP BY brand
+      ORDER BY count DESC
+    `);
+    
+    // Get monthly counts
+    const [monthlyCounts] = await db.query(`
+      SELECT 
+        DATE_FORMAT(obsDate, '%Y-%m') as month,
+        COUNT(*) as count
+      FROM registers
+      WHERE obsDate IS NOT NULL
+      GROUP BY DATE_FORMAT(obsDate, '%Y-%m')
+      ORDER BY month DESC
+      LIMIT 6
+    `);
+    
+    res.json({
+      statusCounts: statusCounts[0] || { pending: 0, recommended: 0, nr_count: 0, scn_count: 0, total: 0 },
+      brandCounts: brandCounts || [],
+      monthlyCounts: monthlyCounts || []
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    res.status(500).json({ 
+      message: 'Error fetching dashboard data',
+      error: error.message 
+    });
+  }
+};
+
 // New endpoint to get next observation number by type
 exports.getNextObservationNumber = async (req, res) => {
   try {

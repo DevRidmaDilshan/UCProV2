@@ -5,6 +5,7 @@ const cors = require('cors');
 // Import your routes
 const registerRoutes = require('./routes/register.routes');  // <-- FIXED
 const dashboardRoutes = require('./routes/dashboard');       // <-- FIXED
+const dailyReportRoutes = require('./routes/dailyReport'); 
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Routes
 app.use('/api/registers', registerRoutes);   // Register API
 app.use('/api/dashboard', dashboardRoutes);  // Dashboard API
+app.use('/api/dailyReport', dailyReportRoutes);  // DailyReport API
 
 // Error handling middleware
 app.use((err, req, res, next) => {
