@@ -407,8 +407,10 @@ const RegisterList = () => {
     );
   });
 
+  const sortedRegisters = [...filteredRegisters].sort(
+    (a, b) => Number(b.id) - Number(a.id)
+  );
 
-  // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredRegisters.length) : 0;
 
@@ -479,59 +481,156 @@ const RegisterList = () => {
         />
       )}
 
-      <TableContainer component={Paper} elevation={3} sx={{ maxHeight: '60vh' }}>
-        <Table stickyHeader>
+      <TableContainer 
+        component={Paper} 
+        elevation={3} 
+        sx={{ 
+          maxHeight: '60vh',
+          overflow: 'auto',
+          '& .MuiTableRow-root': {
+            position: 'relative'
+          }
+        }}
+      >
+        <Table stickyHeader sx={{ minWidth: 1500 }}>
           <TableHead sx={{ bgcolor: '#f5f5f5' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Reg No</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Received Date</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Claim No</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Dealer</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Dealer Code</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Brand</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Size Code</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Serial No</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Observation NO</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+              {/* First three columns with sticky positioning */}
+              <TableCell sx={{ 
+                fontWeight: 'bold', 
+                position: 'sticky', 
+                left: 0, 
+                zIndex: 3, 
+                backgroundColor: '#f5f5f5',
+                minWidth: 120
+              }}>
+                Reg No
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 'bold', 
+                position: 'sticky', 
+                left: 120, 
+                zIndex: 3, 
+                backgroundColor: '#f5f5f5',
+                minWidth: 120
+              }}>
+                Received Date
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 'bold', 
+                position: 'sticky', 
+                left: 240, 
+                zIndex: 3, 
+                backgroundColor: '#f5f5f5',
+                minWidth: 120
+              }}>
+                Claim No
+              </TableCell>
+              
+              {/* Remaining columns */}
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Dealer</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Dealer Code</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Size</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Size Code</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Serial No</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Observation NO</TableCell>
+              {/* <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 250 }}>Actions</TableCell> */}
+              <TableCell sx={{ 
+                fontWeight: 'bold', 
+                position: 'sticky', 
+                right: 120, 
+                backgroundColor: '#f5f5f5',
+                zIndex: 3
+              }}>
+                Status
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 'bold', 
+                position: 'sticky', 
+                right: 0, 
+                backgroundColor: '#f5f5f5',
+                zIndex: 3
+              }}>
+                Actions
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} align="center">Loading...</TableCell>
+                <TableCell colSpan={12} align="center">Loading...</TableCell>
               </TableRow>
-            ) : filteredRegisters.length === 0 ? (
+            ) : sortedRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} align="center">No registers found</TableCell>
+                <TableCell colSpan={12} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
-              filteredRegisters
+              sortedRegisters
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((register) => (
                 <TableRow key={register.id} hover>
-                  <TableCell sx={{ fontWeight: 'bold' }}>{register.id}</TableCell>
-                  <TableCell>{register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
-                  <TableCell>{register.claimNo}</TableCell>
-                  <TableCell>
+                  {/* First three sticky columns */}
+                  <TableCell sx={{ 
+                    fontWeight: 'bold', 
+                    position: 'sticky', 
+                    left: 0, 
+                    zIndex: 2, 
+                    backgroundColor: 'white',
+                    minWidth: 120
+                  }}>
+                    {register.id}
+                  </TableCell>
+                  <TableCell sx={{ 
+                    position: 'sticky', 
+                    left: 120, 
+                    zIndex: 2, 
+                    backgroundColor: 'white',
+                    minWidth: 120
+                  }}>
+                    {register.receivedDate ? format(new Date(register.receivedDate), 'dd/MM/yyyy') : 'N/A'}
+                  </TableCell>
+                  <TableCell sx={{ 
+                    position: 'sticky', 
+                    left: 240, 
+                    zIndex: 2, 
+                    backgroundColor: 'white',
+                    minWidth: 120
+                  }}>
+                    {register.claimNo}
+                  </TableCell>
+                  
+                  {/* Remaining columns */}
+                  <TableCell sx={{ minWidth: 150 }}>
                     {register.dealerName || register.dealerCode}
                     {register.dealerLocation && ` (${register.dealerLocation})`}
                   </TableCell>
-                  <TableCell>{register.dealerCode}</TableCell>
-                  <TableCell>{register.brand}</TableCell>
-                  <TableCell>{register.size}</TableCell>
-                  <TableCell>{register.sizeCode || 'N/A'}</TableCell>
-                  <TableCell>{register.serialNo || 'N/A'}</TableCell>
-                  <TableCell>{register.obsNo || 'N/A'}</TableCell>
-                  <TableCell>{getStatusChip(register)}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{register.dealerCode}</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>{register.brand}</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>{register.size}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{register.sizeCode || 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>{register.serialNo || 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>{register.obsNo || 'N/A'}</TableCell>
+                  <TableCell sx={{ 
+                    position: 'sticky', 
+                    right: 120, 
+                    backgroundColor: 'white',
+                    zIndex: 2
+                  }}>
+                    {getStatusChip(register)}
+                  </TableCell>
+                  <TableCell sx={{ 
+                    position: 'sticky', 
+                    right: 0, 
+                    backgroundColor: 'white',
+                    zIndex: 2
+                  }}>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
                       <Visibility color="primary" />
                     </IconButton>
                     <IconButton 
                       onClick={() => {
-                        // Create a copy with only register fields
                         const registerData = { ...register };
                         delete registerData.dealerName;
                         delete registerData.dealerLocation;
@@ -545,7 +644,6 @@ const RegisterList = () => {
                     {!register.obsDate && (
                       <IconButton 
                         onClick={() => {
-                          // Create a copy with only register fields
                           const registerData = { ...register };
                           delete registerData.dealerName;
                           delete registerData.dealerLocation;
@@ -569,7 +667,7 @@ const RegisterList = () => {
             )}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={11} />
+                <TableCell colSpan={12} />
               </TableRow>
             )}
           </TableBody>
@@ -705,7 +803,6 @@ const RegisterList = () => {
               <Button 
                 onClick={() => {
                   setViewRegister(null);
-                  // Create a copy with only register fields
                   const registerData = { ...viewRegister };
                   delete registerData.dealerName;
                   delete registerData.dealerLocation;

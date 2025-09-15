@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-// import { jsPDF } from 'jspdf';
-// import 'jspdf-autotable';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -15,23 +13,44 @@ import {
   TableCell,
   TableBody,
   TableContainer,
-  Paper
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 
 const DailyReport = () => {
   const [data, setData] = useState([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [consultants, setConsultants] = useState([]);
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    consultant: ''
+  });
+
+  // ✅ Fetch consultant list
+  useEffect(() => {
+    const fetchConsultants = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/dailyReport/consultants');
+        setConsultants(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchConsultants();
+  }, []);
 
   const fetchData = async () => {
-    if (!startDate || !endDate) {
+    if (!filters.startDate || !filters.endDate) {
       alert('Please select start and end dates');
       return;
     }
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/dailyReport?startDate=${startDate}&endDate=${endDate}`
-      );
+      const res = await axios.get(`http://localhost:5000/api/dailyReport`, {
+        params: filters
+      });
       setData(res.data);
     } catch (err) {
       console.error(err);
@@ -39,6 +58,14 @@ const DailyReport = () => {
     }
   };
 
+  const handleFilterChange = (e) => {
+    setFilters((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  // ✅ Excel Download
   const downloadExcel = () => {
     if (!data.length) return alert('No data to download');
 
@@ -58,11 +85,11 @@ const DailyReport = () => {
     const ws = XLSX.utils.json_to_sheet(data, { header: Object.keys(customHeaders) });
 
     XLSX.utils.sheet_add_aoa(ws, [Object.values(customHeaders)], { origin: 'A1' });
-    XLSX.utils.book_append_sheet(wb, ws, "Brand Report");
-    XLSX.writeFile(wb, `dailyReport_${startDate}_to_${endDate}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Observation Summarize Report");
+    XLSX.writeFile(wb, `Observation Summarize Report ${filters.startDate} to ${filters.endDate} by ${filters.consultant}.xlsx`);
   };
 
-  // ✅ Calculate grand totals
+  // ✅ Calculate totals
   const totals = {
     total_observed: data.reduce((sum, row) => sum + (Number(row.total_observed) || 0), 0),
     recommended: data.reduce((sum, row) => sum + (Number(row.recommended) || 0), 0),
@@ -70,13 +97,13 @@ const DailyReport = () => {
     scn_count: data.reduce((sum, row) => sum + (Number(row.scn_count) || 0), 0),
   };
 
-  // ✅ Download PDF
-    const downloadPDF = () => {
+  // ✅ PDF Download
+  const downloadPDF = () => {
     if (!data.length) return alert('No data to download');
 
     const doc = new jsPDF();
     doc.setFontSize(14);
-    doc.text(`Observation Summarize Report (${startDate} to ${endDate})`, 14, 15);
+    doc.text(`Observation Summarize Report ${filters.startDate} to ${filters.endDate} by ${filters.consultant}`, 14, 15);
 
     const tableColumn = [
       "Brand","Total Observed","Total Observed %","R","R %","NR","NR %","SCN","SCN %"
@@ -94,7 +121,6 @@ const DailyReport = () => {
       `${row.scn_percent}%`
     ]);
 
-    // ✅ Add grand totals
     if (data.length > 0) {
       tableRows.push([
         "Grand Total Tyre",
@@ -118,52 +144,62 @@ const DailyReport = () => {
       bodyStyles: { lineWidth: 0.2, lineColor: [0, 0, 0] },
     });
 
-    doc.save(`Observation Summarize Report_${startDate}_to_${endDate}.pdf`);
+    doc.save(`Observation Summarize Report ${filters.startDate} to ${filters.endDate} by ${filters.consultant}.pdf`);
   };
-
 
   return (
     <div style={{ padding: 20 }}>
       <h2>Observation Summarize Report</h2>
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, display: 'flex', gap: 12 }}>
         <TextField
           label="Start Date"
           type="date"
-          value={startDate}
-          onChange={e => setStartDate(e.target.value)}
+          name="startDate"
+          value={filters.startDate}
+          onChange={handleFilterChange}
           InputLabelProps={{ shrink: true }}
-          style={{ marginRight: 10 }}
         />
         <TextField
           label="End Date"
           type="date"
-          value={endDate}
-          onChange={e => setEndDate(e.target.value)}
+          name="endDate"
+          value={filters.endDate}
+          onChange={handleFilterChange}
           InputLabelProps={{ shrink: true }}
-          style={{ marginRight: 10 }}
         />
+        {/* ✅ Consultant dropdown */}
+        <FormControl sx={{ width: 220 }}>
+          <InputLabel>Consultant</InputLabel>
+          <Select
+            name="consultant"
+            value={filters.consultant}
+            label="Consultant"
+            onChange={handleFilterChange}
+          >
+            <MenuItem value="">All Consultants</MenuItem>
+            {consultants.map((consultant) => (
+              <MenuItem
+                key={consultant.consultantName}
+                value={consultant.consultantName}
+              >
+                {consultant.consultantName}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
         <Button variant="contained" color="primary" onClick={fetchData}>
           Generate Report
         </Button>
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={downloadExcel}
-          sx={{ ml: 2 }}
-        >
+        <Button variant="outlined" color="primary" onClick={downloadExcel}>
           Download Excel
         </Button>
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={downloadPDF}
-          sx={{ ml: 2 }}
-        >
+        <Button variant="outlined" color="primary" onClick={downloadPDF}>
           Download PDF
         </Button>
       </div>
 
-      {/* ✅ Table with strong borders */}
+      {/* Table */}
       <TableContainer component={Paper} sx={{ border: '1px solid black' }}>
         <Table sx={{ border: '1px solid black' }}>
           <TableHead>
@@ -171,7 +207,9 @@ const DailyReport = () => {
               {[
                 "Brand","Total Observed","Total Observed %","R","R %","NR","NR %","SCN","SCN %"
               ].map((head) => (
-                <TableCell key={head} sx={{ border: '1px solid black', fontWeight: 'bold' }}>{head}</TableCell>
+                <TableCell key={head} sx={{ border: '1px solid black', fontWeight: 'bold' }}>
+                  {head}
+                </TableCell>
               ))}
             </TableRow>
           </TableHead>
@@ -190,7 +228,6 @@ const DailyReport = () => {
               </TableRow>
             ))}
 
-            {/* ✅ Grand Total Row */}
             {data.length > 0 && (
               <TableRow sx={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
                 <TableCell sx={{ border: '1px solid black', fontWeight: 'bold' }}>Grand Total Tyre</TableCell>
@@ -218,4 +255,5 @@ const DailyReport = () => {
 };
 
 export default DailyReport;
+
 

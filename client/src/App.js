@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Container, 
-  CssBaseline, 
-  ThemeProvider, 
-  createTheme, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Tabs, 
-  Tab, 
-  Box 
+import {
+  Container,
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+  AppBar,
+  Toolbar,
+  Typography,
+  Tabs,
+  Tab,
+  Box,
+  Tooltip,
 } from '@mui/material';
 import RegisterList from './components/RegisterList';
 import Dashboard from './components/Dashboard';
@@ -20,18 +21,25 @@ import ReportGenerator from './components/ReportGenerator';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#093f75ff',
+      main: '#0A2647', // deep blue
     },
     secondary: {
-      main: '#f0e8eaff',
+      main: '#FF6F61', // coral
+    },
+    background: {
+      default: '#f9f9f9',
     },
   },
   typography: {
     h4: {
-      fontWeight: 600,
+      fontWeight: 700,
+      letterSpacing: '0.5px',
     },
     h6: {
       fontWeight: 600,
+    },
+    body1: {
+      fontSize: '1rem',
     },
   },
 });
@@ -48,7 +56,15 @@ function TabPanel(props) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            boxShadow: 3,
+            background: 'white',
+            mt: 2,
+          }}
+        >
           {children}
         </Box>
       )}
@@ -63,63 +79,77 @@ function App() {
     setTabValue(newValue);
   };
 
+  const tabs = [
+    { label: 'Registration', component: <RegisterList /> },
+    { label: 'Brand Summary', component: <Dashboard /> },
+    { label: 'Observation Summary', component: <DailyReport /> },
+    { label: 'Reports', component: <ReportGenerator /> },
+  ];
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {/* AppBar with unique color */}
-      <AppBar 
-        position="static" 
-        sx={{ backgroundColor: "#2E3B55" }}   // top bar color
+
+      {/* Top Bar */}
+      <AppBar
+        position="static"
+        sx={{
+          background: 'linear-gradient(135deg, #0A2647 0%, #144272 100%)',
+          boxShadow: 4,
+        }}
       >
         <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h5"
+            component="div"
+            sx={{
+              flexGrow: 1,
+              fontWeight: 700,
+              letterSpacing: '1px',
+            }}
+          >
             Under Complaint Tyre Management System
           </Typography>
         </Toolbar>
 
-        {/* Tabs with individual colors */}
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
+        {/* Tabs */}
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
           centered
           TabIndicatorProps={{
-            style: { backgroundColor: "white" }, // indicator color
+            style: { backgroundColor: '#FF6F61', height: '4px' },
           }}
         >
-          <Tab 
-            label="Register" 
-            sx={{ color: tabValue === 1 ? "#4caf50" : "#ffffff" }} 
-          />
-          <Tab 
-            label="Dashboard" 
-            sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
-          />
-          <Tab 
-            label="Daily Report" 
-            sx={{ color: tabValue === 0 ? "#ff5722" : "#ffffff" }} 
-          />
-          <Tab 
-            label="Reports" 
-            sx={{ color: tabValue === 2 ? "#2196f3" : "#ffffff" }} 
-          />
-          
+          {tabs.map((tab, index) => (
+            <Tooltip title={tab.label} key={index} arrow>
+              <Tab
+                label={tab.label}
+                sx={{
+                  color: tabValue === index ? '#FF6F61' : '#ffffff',
+                  fontWeight: tabValue === index ? 700 : 500,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  mx: 2,
+                  '&:hover': {
+                    color: '#FFD369',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 2,
+                  },
+                }}
+              />
+            </Tooltip>
+          ))}
         </Tabs>
       </AppBar>
 
-      {/* Tab Content */}
-      <Container maxWidth="xl">
-        <TabPanel value={tabValue} index={0}>
-          <RegisterList />
-        </TabPanel>
-        <TabPanel value={tabValue} index={1}>
-          <Dashboard />
-        </TabPanel>
-        <TabPanel value={tabValue} index={2}>
-          <DailyReport />
-        </TabPanel>
-        <TabPanel value={tabValue} index={3}>
-          <ReportGenerator />
-        </TabPanel>
+      {/* Page Content */}
+      <Container maxWidth="xl" sx={{ mt: 4 }}>
+        {tabs.map((tab, index) => (
+          <TabPanel key={index} value={tabValue} index={index}>
+            {tab.component}
+          </TabPanel>
+        ))}
       </Container>
     </ThemeProvider>
   );
