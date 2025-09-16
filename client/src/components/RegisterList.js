@@ -535,14 +535,17 @@ const RegisterList = () => {
               <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Size Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Serial No</TableCell>
               <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Observation NO</TableCell>
-              {/* <TableCell sx={{ fontWeight: 'bold', minWidth: 150 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', minWidth: 250 }}>Actions</TableCell> */}
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Consultant</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Remaining Tread Depth</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Observation Date</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Technical Observation</TableCell>
               <TableCell sx={{ 
                 fontWeight: 'bold', 
                 position: 'sticky', 
-                right: 120, 
+                right: 250, 
                 backgroundColor: '#f5f5f5',
-                zIndex: 3
+                zIndex: 3,
+                minWidth: 150
               }}>
                 Status
               </TableCell>
@@ -551,7 +554,8 @@ const RegisterList = () => {
                 position: 'sticky', 
                 right: 0, 
                 backgroundColor: '#f5f5f5',
-                zIndex: 3
+                zIndex: 3,
+                minWidth: 250,
               }}>
                 Actions
               </TableCell>
@@ -612,11 +616,16 @@ const RegisterList = () => {
                   <TableCell sx={{ minWidth: 120 }}>{register.sizeCode || 'N/A'}</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>{register.serialNo || 'N/A'}</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>{register.obsNo || 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{register.consultantName || 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{register.treadDepth || 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>{register.techObs || 'N/A'}</TableCell>
                   <TableCell sx={{ 
                     position: 'sticky', 
-                    right: 120, 
+                    right: 250, 
                     backgroundColor: 'white',
-                    zIndex: 2
+                    zIndex: 2,
+                    minWidth: 150
                   }}>
                     {getStatusChip(register)}
                   </TableCell>
@@ -624,7 +633,8 @@ const RegisterList = () => {
                     position: 'sticky', 
                     right: 0, 
                     backgroundColor: 'white',
-                    zIndex: 2
+                    zIndex: 2,
+                    minWidth: 250
                   }}>
                     <IconButton onClick={() => setViewRegister(register)} title="View Details">
                       <Visibility color="primary" />

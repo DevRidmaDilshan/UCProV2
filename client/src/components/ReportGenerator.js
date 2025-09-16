@@ -16,6 +16,7 @@ import {
   TableHead,
   TableRow
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import { generateReport, getInitialData, getAllConsultants } from '../services/api';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -26,13 +27,15 @@ const ReportGenerator = () => {
     endDate: '',
     brand: '',
     obsStatus: '',
-    consultant: ''
+    consultant: '',
+    dealerView: ''   // ✅ Added dealerView filter
   });
 
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
+  const [dealerViews, setDealerViews] = useState([]); // ✅ New state
 
   const observationStatusOptions = [
     'All Observations Status',
@@ -50,6 +53,11 @@ const ReportGenerator = () => {
 
         const consultantsRes = await getAllConsultants();
         setConsultants(consultantsRes.data);
+
+        // ✅ Assume dealerViews also come from getInitialData
+        if (data.dealerViews) {
+          setDealerViews(data.dealerViews);
+        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -104,37 +112,24 @@ const ReportGenerator = () => {
       'Technical Observation': item.techObs,
       'Observation No': item.obsNo || 'N/A',
       'Status': item.obsStatus || 'Pending',
-      'Consultant': item.consultantName || 'N/A'
+      'Consultant': item.consultantName || 'N/A',
+      'Dealer View': item.dealerView || 'N/A'  // ✅ Export dealer view also
     }));
 
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(worksheetData);
-    
+
     // Set column widths
     const colWidths = [
-      { wch: 8 },  // Reg No
-      { wch: 12 }, // Received Date
-      { wch: 12 }, // Claim No
-      { wch: 15 }, // Dealer
-      { wch: 12 }, // Dealer Code
-      { wch: 10 }, // Brand
-      { wch: 8 },  // Size
-      { wch: 10 }, // Size Code
-      { wch: 12 }, // Serial No
-      { wch: 15 }, // Observation Date
-      { wch: 20 }, // Remaining Tread Depth
-      { wch: 30 }, // Technical Observation
-      { wch: 15 }, // Observation No
-      { wch: 20 }, // Status
-      { wch: 15 }  // Consultant
+      { wch: 8 },  { wch: 12 }, { wch: 12 }, { wch: 15 },
+      { wch: 12 }, { wch: 10 }, { wch: 8 },  { wch: 10 },
+      { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 30 },
+      { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 20 }
     ];
     ws['!cols'] = colWidths;
-    
-    // Add worksheet to workbook
+
     XLSX.utils.book_append_sheet(wb, ws, "UC Tyre Report");
-    
-    // Generate Excel file and download
     XLSX.writeFile(wb, `uc_tyre_report_${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.xlsx`);
   };
 
@@ -218,6 +213,26 @@ const ReportGenerator = () => {
             ))}
           </Select>
         </FormControl>
+
+        <Autocomplete
+          options={[{ dealerView: '', dealerName: 'All Dealers' }, ...dealerViews]}
+          getOptionLabel={(option) => option.dealerName || option.dealerView || option}
+          value={
+            dealerViews.find((dealer) => dealer.dealerView === filters.dealerView) ||
+            { dealerView: '', dealerName: 'All Dealers' }
+          }
+          onChange={(e, newValue) => {
+            setFilters((prev) => ({
+              ...prev,
+              dealerView: newValue ? newValue.dealerView : ''
+            }));
+          }}
+          isOptionEqualToValue={(option, value) => option.dealerView === value.dealerView}
+          renderInput={(params) => (
+            <TextField {...params} label="Dealer View" sx={{ width: 200 }} />
+          )}
+          sx={{ width: 200 }}
+        />
       </Box>
 
       {/* Buttons */}
@@ -259,11 +274,12 @@ const ReportGenerator = () => {
                 <TableCell>Observation No</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Consultant</TableCell>
+                <TableCell>Dealer View</TableCell> {/* ✅ Added */}
               </TableRow>
             </TableHead>
             <TableBody>
               {reportData.map((item) => (
-                <TableRow key={item.id} sx={{ height: 50 }}> {/* uniform row height */}
+                <TableRow key={item.id} sx={{ height: 50 }}>
                   <TableCell>{item.id}</TableCell>
                   <TableCell>
                     {item.receivedDate
@@ -289,6 +305,7 @@ const ReportGenerator = () => {
                   <TableCell>{item.obsNo || 'N/A'}</TableCell>
                   <TableCell>{item.obsStatus}</TableCell>
                   <TableCell>{item.consultantName || 'N/A'}</TableCell>
+                  <TableCell>{item.dealerView || 'N/A'}</TableCell> {/* ✅ Added */}
                 </TableRow>
               ))}
             </TableBody>
