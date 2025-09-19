@@ -14,7 +14,8 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  TablePagination
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import { generateReport, getInitialData, getAllConsultants } from '../services/api';
@@ -28,14 +29,17 @@ const ReportGenerator = () => {
     brand: '',
     obsStatus: '',
     consultant: '',
-    dealerView: ''   // ✅ Added dealerView filter
+    dealerView: ''
   });
 
   const [reportData, setReportData] = useState([]);
+  const [sortedData, setSortedData] = useState([]); // Sorted data for display
   const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
-  const [dealerViews, setDealerViews] = useState([]); // ✅ New state
+  const [dealerViews, setDealerViews] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const observationStatusOptions = [
     'All Observations Status',
@@ -54,7 +58,6 @@ const ReportGenerator = () => {
         const consultantsRes = await getAllConsultants();
         setConsultants(consultantsRes.data);
 
-        // ✅ Assume dealerViews also come from getInitialData
         if (data.dealerViews) {
           setDealerViews(data.dealerViews);
         }
@@ -77,11 +80,20 @@ const ReportGenerator = () => {
       const { data } = await generateReport(filters);
 
       let filteredData = data;
-      if (filters.obsStatus) {
+      if (filters.obsStatus && filters.obsStatus !== 'All Observations Status') {
         filteredData = data.filter(item => item.obsStatus === filters.obsStatus);
       }
 
-      setReportData(filteredData);
+      // Sort data by receivedDate in ascending order
+      const sortedByDate = [...filteredData].sort((a, b) => {
+        const dateA = a.receivedDate ? new Date(a.receivedDate).getTime() : 0;
+        const dateB = b.receivedDate ? new Date(b.receivedDate).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      setReportData(sortedByDate);
+      setSortedData(sortedByDate);
+      setPage(0); // Reset to first page when new data is loaded
     } catch (error) {
       console.error('Error generating report:', error);
       alert('Error generating report. Please try again.');
@@ -96,8 +108,9 @@ const ReportGenerator = () => {
       return;
     }
 
-    // Define worksheet data
-    const worksheetData = reportData.map(item => ({
+    // Define worksheet data with S.No column
+    const worksheetData = reportData.map((item, index) => ({
+      'S.No': index + 1,
       'Reg No': item.id,
       'Received Date': item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A',
       'Claim No': item.claimNo,
@@ -113,7 +126,7 @@ const ReportGenerator = () => {
       'Observation No': item.obsNo || 'N/A',
       'Status': item.obsStatus || 'Pending',
       'Consultant': item.consultantName || 'N/A',
-      'Dealer View': item.dealerView || 'N/A'  // ✅ Export dealer view also
+      'Dealer View': item.dealerView || 'N/A'
     }));
 
     // Create workbook and worksheet
@@ -122,7 +135,8 @@ const ReportGenerator = () => {
 
     // Set column widths
     const colWidths = [
-      { wch: 8 },  { wch: 12 }, { wch: 12 }, { wch: 15 },
+      { wch: 5 },   // S.No
+      { wch: 8 },   { wch: 12 }, { wch: 12 }, { wch: 15 },
       { wch: 12 }, { wch: 10 }, { wch: 8 },  { wch: 10 },
       { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 30 },
       { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 20 }
@@ -133,8 +147,21 @@ const ReportGenerator = () => {
     XLSX.writeFile(wb, `uc_tyre_report_${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.xlsx`);
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Avoid a layout jump when reaching the last page with empty rows.
+  const emptyRows =
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - sortedData.length) : 0;
+
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+    <Paper elevation={3} sx={{ p: 3, mb: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Typography variant="h5" gutterBottom>
         Report Generator
       </Typography>
@@ -254,63 +281,96 @@ const ReportGenerator = () => {
       </Box>
 
       {/* Report Table */}
-      {reportData.length > 0 && (
-        <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-          <Table stickyHeader size="small" sx={{ tableLayout: 'auto', width: '100%' }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Reg No</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Received Date</TableCell>
-                <TableCell>Claim No</TableCell>
-                <TableCell>Dealer</TableCell>
-                <TableCell>Dealer Code</TableCell>
-                <TableCell>Brand</TableCell>
-                <TableCell>Size</TableCell>
-                <TableCell>Size Code</TableCell>
-                <TableCell>Serial No</TableCell>
-                <TableCell>Observation Date</TableCell>
-                <TableCell>Remaining Tread Depth</TableCell>
-                <TableCell>Technical Observation</TableCell>
-                <TableCell>Observation No</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Consultant</TableCell>
-                <TableCell>Dealer View</TableCell> {/* ✅ Added */}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {reportData.map((item) => (
-                <TableRow key={item.id} sx={{ height: 50 }}>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>
-                    {item.receivedDate
-                      ? format(new Date(item.receivedDate), 'dd/MM/yyyy')
-                      : 'N/A'}
-                  </TableCell>
-                  <TableCell>{item.claimNo}</TableCell>
-                  <TableCell>{item.dealerName || item.dealerCode}</TableCell>
-                  <TableCell>{item.dealerCode}</TableCell>
-                  <TableCell>{item.brand}</TableCell>
-                  <TableCell>{item.size}</TableCell>
-                  <TableCell>{item.sizeCode}</TableCell>
-                  <TableCell>{item.serialNo}</TableCell>
-                  <TableCell>
-                    {item.obsDate
-                      ? format(new Date(item.obsDate), 'dd/MM/yyyy')
-                      : 'N/A'}
-                  </TableCell>
-                  <TableCell>{item.treadDepth}</TableCell>
-                  <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                    {item.techObs}
-                  </TableCell>
-                  <TableCell>{item.obsNo || 'N/A'}</TableCell>
-                  <TableCell>{item.obsStatus}</TableCell>
-                  <TableCell>{item.consultantName || 'N/A'}</TableCell>
-                  <TableCell>{item.dealerView || 'N/A'}</TableCell> {/* ✅ Added */}
+      {sortedData.length > 0 && (
+        <Paper sx={{ width: '100%', overflow: 'hidden', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <TableContainer sx={{ maxHeight: '60vh', flexGrow: 1, overflow: 'auto' }}>
+            <Table 
+              stickyHeader 
+              size="small" 
+              sx={{ 
+                tableLayout: 'auto', 
+                minWidth: 1600, 
+                border: '1px solid',
+                borderColor: 'divider',
+                '& .MuiTableCell-root': {
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  padding: '8px'
+                }
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>S.No</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Reg No</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Received Date</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Claim No</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Dealer</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Dealer Code</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Brand</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Size</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Size Code</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Serial No</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observation No</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observation Date</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Remaining Tread Depth</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Technical Observation</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Status</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Consultant</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {(rowsPerPage > 0
+                  ? sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  : sortedData
+                ).map((item, index) => (
+                  <TableRow key={item.id} sx={{ height: 50 }}>
+                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
+                    <TableCell>{item.id}</TableCell>
+                    <TableCell>
+                      {item.receivedDate
+                        ? format(new Date(item.receivedDate), 'dd/MM/yyyy')
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>{item.claimNo}</TableCell>
+                    <TableCell>{item.dealerView || item.dealerName}</TableCell>
+                    <TableCell>{item.dealerCode}</TableCell>
+                    <TableCell>{item.brand}</TableCell>
+                    <TableCell>{item.size}</TableCell>
+                    <TableCell>{item.sizeCode}</TableCell>
+                    <TableCell>{item.serialNo}</TableCell>
+                    <TableCell>{item.obsNo || 'N/A'}</TableCell>
+                    <TableCell>
+                      {item.obsDate
+                        ? format(new Date(item.obsDate), 'dd/MM/yyyy')
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>{item.treadDepth}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                      {item.techObs}
+                    </TableCell>
+                    <TableCell>{item.obsStatus}</TableCell>
+                    <TableCell>{item.consultantName || 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+                {emptyRows > 0 && (
+                  <TableRow style={{ height: 53 * emptyRows }}>
+                    <TableCell colSpan={17} />
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 50, { value: -1, label: 'All' }]}
+            component="div"
+            count={sortedData.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </Paper>
       )}
     </Paper>
   );
