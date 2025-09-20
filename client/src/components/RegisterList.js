@@ -98,10 +98,13 @@ const RegisterList = () => {
 
   const handlePrint = (register) => {
     // Determine header and note number based on observation status
-    let headerTitle = "CLAIM REFUND NOTE";
-    let noteNumberLabel = "CR No";
+    let headerTitle = "PENDING NOTE";
+    let noteNumberLabel = "PENDING No";
     
-    if (register.obsStatus === 'Not Recommended') {
+    if (register.obsStatus === 'Recommended') {
+      headerTitle = "CLAIM REFUND NOTE";
+      noteNumberLabel = "CR No";
+    } else if (register.obsStatus === 'Not Recommended') {
       headerTitle = "NO REFUND NOTE";
       noteNumberLabel = "NR No";
     } else if (register.obsStatus === 'Forwarded for Management Decision') {
@@ -253,6 +256,10 @@ const RegisterList = () => {
       </style>
       </head>
       <body>
+      <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+      </div>
         <div class="container">
 
           <!-- Header -->
@@ -378,11 +385,6 @@ const RegisterList = () => {
           _______________________________________________________________________<br>
             <b><i>N.B.A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
           </div>
-        </div>
-        
-        <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.print()">Print</button>
-          <button onclick="window.close()">Close</button>
         </div>
       </body>
       </html>

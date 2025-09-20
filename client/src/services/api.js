@@ -41,3 +41,4 @@ export const getNextObservationNumber = (type) => api.get(`/observation-number/$
 export const getDashboardData = () => api.get('/dashboard');
 export const generateReport = (filters) => api.post('/reports', filters);
 export const getDailyReportData = () => api.get('/dailyReport');
+export const getAllObservations = () => api.get('/observations');
