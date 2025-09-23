@@ -62,10 +62,12 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   const [customObservation, setCustomObservation] = useState('');
   const [manufacturingDefect, setManufacturingDefect] = useState(false);
   const [noManufacturingDefect, setNoManufacturingDefect] = useState(false);
+  const [currentObservation, setCurrentObservation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [hasParsedInitialData, setHasParsedInitialData] = useState(false);
 
-  // Format date for input
+  // Format date safely
   const formatDateForInput = (dateString) => {
     if (!dateString) return format(new Date(), 'yyyy-MM-dd');
     try {
@@ -76,17 +78,74 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   };
 
+  // Parse techObs into selections
+  const parseTechnicalObservations = (techObsText) => {
+    if (!techObsText) return;
+
+    const lines = techObsText.split('\n').filter(line => line.trim() !== '');
+    const newSelected = [];
+    let defect = false;
+    let noDefect = false;
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed === '(Manufacturing Defect)') {
+        defect = true;
+        return;
+      }
+      if (trimmed === '(No Manufacturing Defect)') {
+        noDefect = true;
+        return;
+      }
+
+      // strip numbering if exists
+      const numberedMatch = trimmed.match(/^\d+\)\s+(.+)$/);
+      const observationText = numberedMatch ? numberedMatch[1] : trimmed;
+
+      const predefinedObs = observations.find(obs => 
+        observationText.startsWith(`${obs.obId} - `) || observationText === obs.observation
+      );
+
+      if (predefinedObs) {
+        newSelected.push({ ...predefinedObs, isCustom: false });
+      } else {
+        newSelected.push({ obId: `CUSTOM-${Date.now()}`, observation: observationText, isCustom: true });
+      }
+    });
+
+    setSelectedObservations(newSelected);
+    setManufacturingDefect(defect);
+    setNoManufacturingDefect(noDefect);
+  };
+
+  // Load initial + observations
   useEffect(() => {
-    if (initialData) {
+    const fetchInitialData = async () => {
+      try {
+        const { data } = await getInitialData();
+        setDealerViews(data.dealerViews);
+        setBrands(data.brands);
+
+        const consultantsRes = await getAllConsultants();
+        setConsultants(consultantsRes.data);
+
+        const observationsRes = await getAllObservations();
+        setObservations(observationsRes.data);
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  // Populate formData from initialData
+  useEffect(() => {
+    if (initialData && !hasParsedInitialData) {
       let obsStatus = 'Pending';
       if (initialData.obsNo) {
-        if (initialData.obsNo.startsWith('R')) {
-          obsStatus = 'Recommended';
-        } else if (initialData.obsNo.startsWith('NR')) {
-          obsStatus = 'Not Recommended';
-        } else if (initialData.obsNo.startsWith('SCN')) {
-          obsStatus = 'Forwarded for Management Decision';
-        }
+        if (initialData.obsNo.startsWith('R')) obsStatus = 'Recommended';
+        else if (initialData.obsNo.startsWith('NR')) obsStatus = 'Not Recommended';
+        else if (initialData.obsNo.startsWith('SCN')) obsStatus = 'Forwarded for Management Decision';
       }
 
       setFormData(prev => ({
@@ -96,23 +155,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         obsDate: formatDateForInput(initialData.obsDate),
         obsStatus
       }));
-
-      // Parse existing technical observations
-      if (initialData.techObs) {
-        const obsText = initialData.techObs;
-        setManufacturingDefect(obsText.includes('Manufacturing Defect'));
-        setNoManufacturingDefect(obsText.includes('No Manufacturing Defect'));
-        
-        // Extract observation IDs from the text
-        const obsIds = obsText.split('\n')
-          .filter(line => line.match(/^[A-Z0-9]+ - /))
-          .map(line => line.split(' - ')[0]);
-        
-        if (obsIds.length > 0) {
-          // This would need to be enhanced to actually fetch the observations by ID
-          setSelectedObservations(obsIds.map(id => ({ obId: id, observation: '' })));
-        }
-      }
 
       if (initialData.brand) {
         getSizesByBrand(initialData.brand).then(({ data }) => {
@@ -129,35 +171,20 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           }
         });
       }
-    }
 
-    const fetchInitialData = async () => {
-      try {
-        const { data } = await getInitialData();
-        setDealerViews(data.dealerViews);
-        setBrands(data.brands);
-
-        const consultantsRes = await getAllConsultants();
-        setConsultants(consultantsRes.data);
-
-        const observationsRes = await getAllObservations();
-        setObservations(observationsRes.data);
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
+      if (initialData.techObs) {
+        parseTechnicalObservations(initialData.techObs);
       }
-    };
 
-    fetchInitialData();
-  }, [initialData]);
+      setHasParsedInitialData(true);
+    }
+  }, [initialData, hasParsedInitialData, observations]);
 
   useEffect(() => {
     if (formData.dealerView) {
       getDealerByView(formData.dealerView)
         .then(({ data }) => {
-          setFormData(prev => ({
-            ...prev,
-            dealerCode: data.dealerCode
-          }));
+          setFormData(prev => ({ ...prev, dealerCode: data.dealerCode }));
         })
         .catch(err => console.error('Error fetching dealer:', err));
     }
@@ -178,34 +205,16 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   }, [formData.brand]);
 
-  // Update techObs when selected observations or checkboxes change
+  // Update techObs string
   useEffect(() => {
-    let techObsText = '';
-    
-    // Add selected observations
-    selectedObservations.forEach(obs => {
-      const fullObservation = observations.find(o => o.obId === obs.obId);
-      if (fullObservation) {
-        techObsText += `${fullObservation.obId} - ${fullObservation.observation}\n`;
-      }
+    let text = '';
+    selectedObservations.forEach((obs, i) => {
+      text += obs.isCustom ? `${i + 1}) ${obs.observation}\n` : `${i + 1}) ${obs.obId} - ${obs.observation}\n`;
     });
-    
-    // Add custom observation
-    if (customObservation) {
-      techObsText += `${customObservation}\n`;
-    }
-    
-    // Add manufacturing defect status
-    if (manufacturingDefect) {
-      techObsText += 'Manufacturing Defect\n';
-    }
-    
-    if (noManufacturingDefect) {
-      techObsText += 'No Manufacturing Defect\n';
-    }
-    
-    setFormData(prev => ({ ...prev, techObs: techObsText }));
-  }, [selectedObservations, customObservation, manufacturingDefect, noManufacturingDefect, observations]);
+    if (manufacturingDefect) text += '(Manufacturing Defect)\n';
+    if (noManufacturingDefect) text += '(No Manufacturing Defect)\n';
+    setFormData(prev => ({ ...prev, techObs: text }));
+  }, [selectedObservations, manufacturingDefect, noManufacturingDefect]);
 
   const handleSizeChange = (e, newValue) => {
     if (newValue) {
@@ -229,7 +238,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     const { value } = e.target;
     setFormData(prev => ({ ...prev, obsStatus: value }));
 
-    if (value !== 'Pending') {
+    if (mode === 'create' && value !== 'Pending' && !formData.obsNo) {
       try {
         let type = '';
         switch (value) {
@@ -238,20 +247,20 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           case 'Forwarded for Management Decision': type = 'SCN'; break;
           default: return;
         }
-
         const { data } = await getNextObservationNumber(type);
         setFormData(prev => ({ ...prev, obsNo: data.nextNumber }));
       } catch (err) {
         console.error('Error generating observation number:', err);
       }
-    } else {
+    } else if (value === 'Pending') {
       setFormData(prev => ({ ...prev, obsNo: '' }));
     }
   };
 
-  const addObservation = (observation) => {
-    if (observation && !selectedObservations.find(obs => obs.obId === observation.obId)) {
-      setSelectedObservations(prev => [...prev, observation]);
+  const addObservation = () => {
+    if (currentObservation && !selectedObservations.find(obs => obs.obId === currentObservation.obId)) {
+      setSelectedObservations(prev => [...prev, { ...currentObservation, isCustom: false }]);
+      setCurrentObservation(null);
     }
   };
 
@@ -261,10 +270,10 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   const addCustomObservation = () => {
     if (customObservation.trim()) {
-      setFormData(prev => ({
+      setSelectedObservations(prev => [
         ...prev,
-        techObs: prev.techObs + customObservation + '\n'
-      }));
+        { obId: `CUSTOM-${Date.now()}`, observation: customObservation.trim(), isCustom: true }
+      ]);
       setCustomObservation('');
     }
   };
@@ -295,7 +304,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         setMessage('Basic information saved successfully! Registration No: ' + registerId);
         setTimeout(() => onSuccess(), 2000);
       } else {
-        await updateRegister(initialData.id, formData);
+        const updateData = { ...formData, obsNo: initialData?.obsNo || formData.obsNo };
+        await updateRegister(initialData.id, updateData);
         setMessage('Registration updated successfully!');
         setTimeout(() => onSuccess(), 2000);
       }
@@ -320,13 +330,11 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Basic Information */}
+        {/* Basic Info */}
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Basic Information
-            </Typography>
-
+            <Typography variant="h6">Basic Information</Typography>
+            {/* ... your fields same as before ... */}
             {/* Row 1: Received Date + Claim No */}
             <Box display="flex" gap={2} mb={2}>
               <TextField
@@ -424,59 +432,30 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           </CardContent>
         </Card>
 
-        {/* Technical Section */}
         {(mode === 'edit' || technicalMode) && (
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Technical Details
-              </Typography>
+              <Typography variant="h6">Technical Details</Typography>
 
               <Box display="flex" gap={2} mb={2}>
-                <TextField
-                  fullWidth
-                  label="Observation Date"
-                  type="date"
-                  name="obsDate"
-                  value={formData.obsDate}
-                  onChange={handleChange}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  fullWidth
-                  label="Remaining Tread Depth"
-                  name="treadDepth"
-                  value={formData.treadDepth}
-                  onChange={handleChange}
-                  placeholder="e.g., 6,6,6,6"
-                />
+                <TextField fullWidth label="Observation Date" type="date" name="obsDate"
+                  value={formData.obsDate} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+                <TextField fullWidth label="Remaining Tread Depth" name="treadDepth"
+                  value={formData.treadDepth} onChange={handleChange} placeholder="e.g., 6,6,6,6" />
               </Box>
 
               <Box display="flex" gap={2} mb={2}>
                 <FormControl fullWidth>
                   <InputLabel>Consultant Name</InputLabel>
-                  <Select
-                    name="consultantName"
-                    value={formData.consultantName}
-                    label="Consultant Name"
-                    onChange={handleChange}
-                  >
-                    {consultants.map((c) => (
-                      <MenuItem key={c.consultantName} value={c.consultantName}>
-                        {c.consultantName}
-                      </MenuItem>
+                  <Select name="consultantName" value={formData.consultantName} onChange={handleChange}>
+                    {consultants.map(c => (
+                      <MenuItem key={c.consultantName} value={c.consultantName}>{c.consultantName}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-
                 <FormControl fullWidth>
                   <InputLabel>Observation Status</InputLabel>
-                  <Select
-                    name="obsStatus"
-                    value={formData.obsStatus}
-                    label="Observation Status"
-                    onChange={handleStatusChange}
-                  >
+                  <Select name="obsStatus" value={formData.obsStatus} onChange={handleStatusChange}>
                     <MenuItem value="">Pending</MenuItem>
                     <MenuItem value="Recommended">Recommended</MenuItem>
                     <MenuItem value="Not Recommended">Not Recommended</MenuItem>
@@ -485,122 +464,54 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                 </FormControl>
               </Box>
 
-              <Box display="flex" gap={2} mb={2}>
-                <TextField
-                  fullWidth
-                  label="Observation Number"
-                  name="obsNo"
-                  value={formData.obsNo}
-                  onChange={handleChange}
-                  disabled
-                />
-              </Box>
+              <TextField fullWidth label="Observation Number" name="obsNo"
+                value={formData.obsNo} onChange={handleChange} disabled />
 
-              <Typography variant="subtitle1" gutterBottom>
-                Technical Observations
-              </Typography>
-
-              {/* Observation selection */}
+              <Typography variant="subtitle1" gutterBottom>Technical Observations</Typography>
               <Box display="flex" gap={2} mb={2}>
                 <Autocomplete
                   options={observations}
-                  getOptionLabel={(option) => `${option.obId} - ${option.observation}`}
-                  onChange={(e, newValue) => newValue && addObservation(newValue)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Select Observation" />
-                  )}
-                  sx={{ flexGrow: 1 }}
+                  getOptionLabel={(o) => `${o.obId} - ${o.observation}`}
+                  value={currentObservation}
+                  onChange={(e, val) => setCurrentObservation(val)}
+                  renderInput={(params) => <TextField {...params} label="Select Observation" />}
                 />
-                <IconButton color="primary" onClick={() => {}}>
-                  <AddIcon />
-                </IconButton>
+                <IconButton onClick={addObservation} disabled={!currentObservation}><AddIcon /></IconButton>
               </Box>
 
-              {/* Selected observations list */}
               {selectedObservations.length > 0 && (
                 <List dense sx={{ border: '1px solid #ddd', borderRadius: 1, mb: 2 }}>
-                  {selectedObservations.map((obs) => (
+                  {selectedObservations.map((obs, i) => (
                     <ListItem key={obs.obId}>
-                      <ListItemText 
-                        primary={`${obs.obId} - ${observations.find(o => o.obId === obs.obId)?.observation || ''}`}
-                      />
+                      <ListItemText primary={obs.isCustom ? `${i + 1}) ${obs.observation}` : `${i + 1}) ${obs.obId} - ${obs.observation}`} />
                       <ListItemSecondaryAction>
-                        <IconButton edge="end" onClick={() => removeObservation(obs.obId)}>
-                          <DeleteIcon />
-                        </IconButton>
+                        <IconButton onClick={() => removeObservation(obs.obId)}><DeleteIcon /></IconButton>
                       </ListItemSecondaryAction>
                     </ListItem>
                   ))}
                 </List>
               )}
 
-              {/* Custom observation input */}
               <Box display="flex" gap={2} mb={2}>
-                <TextField
-                  fullWidth
-                  label="Custom Observation"
-                  value={customObservation}
-                  onChange={(e) => setCustomObservation(e.target.value)}
-                  multiline
-                  rows={2}
-                />
-                <IconButton 
-                  color="primary" 
-                  onClick={addCustomObservation}
-                  disabled={!customObservation.trim()}
-                >
-                  <AddIcon />
-                </IconButton>
+                <TextField fullWidth label="Custom Observation" value={customObservation}
+                  onChange={(e) => setCustomObservation(e.target.value)} multiline />
+                <IconButton onClick={addCustomObservation} disabled={!customObservation.trim()}><AddIcon /></IconButton>
               </Box>
 
-              {/* Manufacturing defect checkboxes */}
               <Box display="flex" gap={2} mb={2}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={manufacturingDefect}
-                      onChange={(e) => setManufacturingDefect(e.target.checked)}
-                    />
-                  }
-                  label="Manufacturing Defect"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={noManufacturingDefect}
-                      onChange={(e) => setNoManufacturingDefect(e.target.checked)}
-                    />
-                  }
-                  label="No Manufacturing Defect"
-                />
+                <FormControlLabel control={<Checkbox checked={manufacturingDefect} onChange={(e) => setManufacturingDefect(e.target.checked)} />} label="Manufacturing Defect" />
+                <FormControlLabel control={<Checkbox checked={noManufacturingDefect} onChange={(e) => setNoManufacturingDefect(e.target.checked)} />} label="No Manufacturing Defect" />
               </Box>
 
-              {/* Technical observations display */}
-              <TextField
-                fullWidth
-                label="Technical Observation"
-                name="techObs"
-                value={formData.techObs}
-                onChange={handleChange}
-                multiline
-                rows={4}
-                placeholder="Observations will appear here..."
-              />
+              <TextField fullWidth multiline rows={4} label="Technical Observation"
+                value={formData.techObs} InputProps={{ style: { whiteSpace: 'pre-line' } }} />
             </CardContent>
           </Card>
         )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button onClick={() => onSuccess()} variant="outlined">
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary"
-            disabled={loading}
-            sx={{ minWidth: '120px' }}
-          >
+          <Button onClick={() => onSuccess()} variant="outlined">Cancel</Button>
+          <Button type="submit" variant="contained" color="primary" disabled={loading}>
             {loading ? 'Saving...' : (mode === 'create' ? 'Save Basic Info' : 'Save')}
           </Button>
         </Box>
@@ -610,3 +521,4 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 };
 
 export default RegisterForm;
+

@@ -5,7 +5,7 @@ import {
   TableCell, 
   TableContainer, 
   TableHead, 
-  TableRow, 
+ TableRow, 
   Paper, 
   Button, 
   IconButton,
@@ -112,6 +112,9 @@ const RegisterList = () => {
       noteNumberLabel = "SCN No";
     }
 
+    // Format technical observations with proper line breaks
+    const formattedTechObs = register.techObs ? register.techObs.replace(/\n/g, '<br/>') : 'N/A';
+
     const content = `
       <!DOCTYPE html>
       <html lang="en">
@@ -198,7 +201,10 @@ const RegisterList = () => {
           width: 100%;
         }
         .observations td {
-          height: 60px; /* bigger height for text area */
+          height: auto; /* auto height for text area */
+          min-height: 80px;
+          text-align: left;
+          padding: 8px;
         }
 
         /* Signatures row */
@@ -220,7 +226,6 @@ const RegisterList = () => {
         .refund-table th, .refund-table td {
           height: 15px;
         }
-
 
         /* Approval */
         .approval {
@@ -313,7 +318,7 @@ const RegisterList = () => {
           <table class="observations">
             <tr>
               <th style="width: 25%; text-align: left; height: 80px;">Technical Observations :</th>
-              <td style="width: 75%; height: 80px; text-align: center;">${register.techObs || 'N/A'}</td>
+              <td style="width: 75%; height: auto; text-align: left;">${formattedTechObs}</td>
             </tr>
           </table>
           <table class="observations">
@@ -621,7 +626,14 @@ const RegisterList = () => {
                   <TableCell sx={{ minWidth: 120 }}>{register.consultantName || 'N/A'}</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>{register.treadDepth || 'N/A'}</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>{register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
-                  <TableCell sx={{ minWidth: 200 }}>{register.techObs || 'N/A'}</TableCell>
+                  <TableCell sx={{ 
+                    minWidth: 200, 
+                    whiteSpace: 'pre-line',
+                    maxHeight: '120px',
+                    overflow: 'auto'
+                  }}>
+                    {register.techObs || 'N/A'}
+                  </TableCell>
                   <TableCell sx={{ 
                     position: 'sticky', 
                     right: 250, 
@@ -783,9 +795,9 @@ const RegisterList = () => {
                         <Typography variant="subtitle2">Observation Date:</Typography>
                         <Typography>{format(new Date(viewRegister.obsDate), 'dd/MM/yyyy')}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={12}>
                         <Typography variant="subtitle2">Technical Observation:</Typography>
-                        <Typography>{viewRegister.techObs || 'N/A'}</Typography>
+                        <Typography style={{ whiteSpace: 'pre-line' }}>{viewRegister.techObs || 'N/A'}</Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="subtitle2">Remaining Tread Depth:</Typography>

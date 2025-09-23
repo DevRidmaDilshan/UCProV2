@@ -8,6 +8,8 @@ const port = process.env.PORT;
 const registerRoutes = require('./routes/register.routes');  // <-- FIXED
 const dashboardRoutes = require('./routes/dashboard');       // <-- FIXED
 const dailyReportRoutes = require('./routes/dailyReport'); 
+const observationsRoutes = require('./routes/observations');
+const recheckRoutes = require("./routes/recheck");
 
 const app = express();
 
@@ -25,6 +27,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api/registers', registerRoutes);   // Register API
 app.use('/api/dashboard', dashboardRoutes);  // Dashboard API
 app.use('/api/dailyReport', dailyReportRoutes);  // DailyReport API
+app.use('/api/observations', observationsRoutes);
+app.use("/api/recheck", recheckRoutes);
+
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
