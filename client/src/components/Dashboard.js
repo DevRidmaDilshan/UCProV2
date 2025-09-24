@@ -132,6 +132,9 @@ const Dashboard = () => {
   return (
     <div style={{ padding: 20 }}>
       <h2>Brand Wise Summarize Report</h2>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+              UC Tyre Register
+            </Typography>
       <div style={{ marginBottom: 20 }}>
         <TextField
           label="Start Date"

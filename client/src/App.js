@@ -100,14 +100,16 @@ function App() {
           boxShadow: 4,
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
           <Typography
-            variant="h5"
-            component="div"
+            variant="h4"
+            component="h1"
             sx={{
-              flexGrow: 1,
               fontWeight: 700,
-              letterSpacing: '1px',
+              letterSpacing: '1.5px',
+              textAlign: 'center',
+              color: '#FFD700',
+              textShadow: '1px 1px 2px rgba(255, 252, 252, 1)',
             }}
           >
             Under Complaint Tyre Management System
