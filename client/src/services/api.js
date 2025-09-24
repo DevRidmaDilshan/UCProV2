@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 const api = axios.create({
   baseURL: 'http://localhost:5000/api/registers',
 });
@@ -41,4 +43,7 @@ export const getNextObservationNumber = (type) => api.get(`/observation-number/$
 export const getDashboardData = () => api.get('/dashboard');
 export const generateReport = (filters) => api.post('/reports', filters);
 export const getDailyReportData = () => api.get('/dailyReport');
-export const getAllObservations = () => api.get('/observations');
+// export const getAllObservations = () => api.get('/observations');
+export const getAllObservations = () => {
+  return axios.get(`${API_BASE_URL}/observations`); // This should match the mounted route
+};

@@ -76,16 +76,13 @@ exports.getRegisterById = async (req, res) => {
 
 exports.updateRegister = async (req, res) => {
   try {
-    // Format receivedDate if it exists
+    // 1. Format date fields if they exist
     if (req.body.receivedDate) {
-      // Extract just the date part from ISO string or format existing date
       const date = new Date(req.body.receivedDate);
       if (!isNaN(date.getTime())) {
         req.body.receivedDate = date.toISOString().split('T')[0];
       }
     }
-    
-    // Similarly, format any other date fields like obsDate
     if (req.body.obsDate) {
       const date = new Date(req.body.obsDate);
       if (!isNaN(date.getTime())) {
@@ -94,25 +91,45 @@ exports.updateRegister = async (req, res) => {
     }
 
     console.log('Updating register with data:', req.body);
-    
-    // If obsStatus is provided, generate the appropriate observation number
+
+    // 2. Critical Logic: Determine if a new observation number is needed
     if (req.body.obsStatus) {
-      switch(req.body.obsStatus) {
-        case 'Recommended':
-          req.body.obsNo = await generateObservationNumber('R');
-          break;
-        case 'Not Recommended':
-          req.body.obsNo = await generateObservationNumber('NR');
-          break;
-        case 'Forwarded for Management Decision':
-          req.body.obsNo = await generateObservationNumber('SCN');
-          break;
-        case 'Pending':
-          req.body.obsNo = null;
-          break;
+      // First, get the current register data to check the existing status and obsNo
+      const currentRegister = await Register.getById(req.params.id);
+
+      if (currentRegister) {
+        const currentStatus = currentRegister.obsStatus;
+        const currentObsNo = currentRegister.obsNo;
+        const newStatus = req.body.obsStatus;
+
+        // Condition to generate a new number:
+        // - The new status is NOT "Pending"
+        // - AND EITHER:
+        //   a) The status is actually being changed, OR
+        //   b) There is no existing observation number
+        if (newStatus !== 'Pending' && (currentStatus !== newStatus || !currentObsNo)) {
+          switch (newStatus) {
+            case 'Recommended':
+              req.body.obsNo = await generateObservationNumber('R');
+              break;
+            case 'Not Recommended':
+              req.body.obsNo = await generateObservationNumber('NR');
+              break;
+            case 'Forwarded for Management Decision':
+              req.body.obsNo = await generateObservationNumber('SCN');
+              break;
+          }
+        } else {
+          // Otherwise, preserve the existing observation number
+          // If new status is "Pending", explicitly set obsNo to null
+          req.body.obsNo = (newStatus === 'Pending') ? null : currentObsNo;
+        }
+      } else {
+        return res.status(404).json({ message: 'Register not found' });
       }
     }
-    
+
+    // 3. Proceed with the update using the modified req.body
     const affectedRows = await Register.update(req.params.id, req.body);
     if (affectedRows === 0) {
       return res.status(404).json({ message: 'Register not found' });
@@ -120,9 +137,9 @@ exports.updateRegister = async (req, res) => {
     res.json({ message: 'Register updated successfully' });
   } catch (error) {
     console.error('Error updating register:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error updating register',
-      error: error.message 
+      error: error.message
     });
   }
 };
