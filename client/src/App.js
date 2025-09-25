@@ -85,7 +85,7 @@ function App() {
     { label: 'Brand Summary', component: <Dashboard /> },
     { label: 'Observation Summary', component: <DailyReport /> },
     { label: 'Reports', component: <ReportGenerator /> },
-    { label: 'Recheck Note', component: <RecheckNote />}
+    { label: 'Recheck Note', component: <RecheckNote /> },
   ];
 
   return (

@@ -9,7 +9,8 @@ const registerRoutes = require('./routes/register.routes');  // <-- FIXED
 const dashboardRoutes = require('./routes/dashboard');       // <-- FIXED
 const dailyReportRoutes = require('./routes/dailyReport'); 
 const observationRoutes = require('./routes/observations');
-const recheckRoutes = require("./routes/recheck");
+// Add this with other route imports
+const recheckRoutes = require('./routes/recheck.routes');
 
 const app = express();
 
@@ -28,7 +29,8 @@ app.use('/api/registers', registerRoutes);   // Register API
 app.use('/api/dashboard', dashboardRoutes);  // Dashboard API
 app.use('/api/dailyReport', dailyReportRoutes);  // DailyReport API
 app.use('/api/observations', observationRoutes);
-app.use("/api/recheck", recheckRoutes);
+// Add this with other route uses
+app.use('/api/rechecks', recheckRoutes);
 
 
 

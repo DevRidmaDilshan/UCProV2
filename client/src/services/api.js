@@ -47,3 +47,31 @@ export const getDailyReportData = () => api.get('/dailyReport');
 export const getAllObservations = () => {
   return axios.get(`${API_BASE_URL}/observations`); // This should match the mounted route
 };
+// Recheck API functions
+export const getAllRechecks = () => {
+  return axios.get('/api/rechecks');
+};
+
+export const getRecheckById = (recheckNo) => {
+  return axios.get(`/api/rechecks/${recheckNo}`);
+};
+
+export const createRecheck = (recheckData) => {
+  return axios.post('/api/rechecks', recheckData);
+};
+
+export const updateRecheck = (recheckNo, recheckData) => {
+  return axios.put(`/api/rechecks/${recheckNo}`, recheckData);
+};
+
+export const deleteRecheck = (recheckNo) => {
+  return axios.delete(`/api/rechecks/${recheckNo}`);
+};
+
+export const getRegisterForRecheck = (id) => {
+  return axios.get(`/api/rechecks/register/${id}`);
+};
+
+export const getRegistersWithObservations = () => {
+  return axios.get('/api/rechecks/registers/with-observations');
+};

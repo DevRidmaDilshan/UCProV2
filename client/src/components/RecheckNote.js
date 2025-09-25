@@ -1,275 +1,552 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Typography,
-  Paper, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, IconButton
-} from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import PrintIcon from '@mui/icons-material/Print';
-import DownloadIcon from '@mui/icons-material/Download';
+  Box,
+  Paper,
+  Typography,
+  Button,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Card,
+  CardContent,
+  Grid,
+  Autocomplete
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Print as PrintIcon
+} from '@mui/icons-material';
+import { format } from 'date-fns';
+import {
+  getAllRechecks,
+  createRecheck,
+  updateRecheck,
+  deleteRecheck,
+  getRegistersWithObservations,
+  getRegisterForRecheck
+} from '../services/api';
 
-export default function RecheckNote() {
-  const [regNos, setRegNos] = useState([]);
-  const [openAdd, setOpenAdd] = useState(false);
-  const [form, setForm] = useState({});
+const RecheckNote = () => {
   const [rechecks, setRechecks] = useState([]);
-  const [viewItem, setViewItem] = useState(null);
-  const [editItem, setEditItem] = useState(null);
+  const [registers, setRegisters] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedRecheck, setSelectedRecheck] = useState(null);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    id: '',
+    reObsDate: format(new Date(), 'yyyy-MM-dd'),
+    reObs: '',
+    reTreadDepth: ''
+  });
+
+  const [registerData, setRegisterData] = useState({
+    claimNo: '',
+    dealerView: '',
+    brand: '',
+    size: '',
+    treadDepth: '',
+    techObs: '',
+    obsDate: '',
+    obsStatus: ''
+  });
 
   useEffect(() => {
-    fetchRegNos();
     fetchRechecks();
+    fetchRegisters();
   }, []);
 
-  async function fetchRegNos() {
+  const fetchRechecks = async () => {
     try {
-      const { data } = await axios.get('/api/recheck/regnos');
-      setRegNos(data || []);
-    } catch (err) {
-      console.error('fetchRegNos error', err?.response?.data || err.message);
+      const { data } = await getAllRechecks();
+      setRechecks(data);
+    } catch (error) {
+      console.error('Error fetching rechecks:', error);
+      setMessage('Error fetching recheck data');
     }
-  }
-
-  async function fetchRechecks() {
-    try {
-      const { data } = await axios.get('/api/recheck/all');
-      setRechecks(data || []);
-    } catch (err) {
-      console.error('fetchRechecks error', err?.response?.data || err.message);
-    }
-  }
-
-  const handleOpenAdd = () => {
-    setForm({});
-    setOpenAdd(true);
   };
 
-  const handleSelectReg = (e, value) => {
-    if (!value) {
-      setForm({});
+  const fetchRegisters = async () => {
+    try {
+      const { data } = await getRegistersWithObservations();
+      setRegisters(data);
+    } catch (error) {
+      console.error('Error fetching registers:', error);
+      setMessage('Error fetching register data');
+    }
+  };
+
+  const handleRegisterChange = async (event, value) => {
+    if (value) {
+      setFormData(prev => ({ ...prev, id: value.id }));
+      
+      try {
+        const { data } = await getRegisterForRecheck(value.id);
+        setRegisterData({
+          claimNo: data.claimNo || '',
+          dealerView: data.dealerView || '',
+          brand: data.brand || '',
+          size: data.size || '',
+          treadDepth: data.serialNo || '',
+          techObs: data.techObs || '',
+          obsDate: data.obsDate ? format(new Date(data.obsDate), 'yyyy-MM-dd') : '',
+          obsStatus: data.obsStatus || ''
+        });
+      } catch (error) {
+        console.error('Error fetching register details:', error);
+        setMessage('Error fetching register details');
+      }
+    } else {
+      setFormData(prev => ({ ...prev, id: '' }));
+      setRegisterData({
+        claimNo: '',
+        dealerView: '',
+        brand: '',
+        size: '',
+        treadDepth: '',
+        techObs: '',
+        obsDate: '',
+        obsStatus: ''
+      });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      id: '',
+      reObsDate: format(new Date(), 'yyyy-MM-dd'),
+      reObs: '',
+      reTreadDepth: ''
+    });
+    setRegisterData({
+      claimNo: '',
+      dealerView: '',
+      brand: '',
+      size: '',
+      treadDepth: '',
+      techObs: '',
+      obsDate: '',
+      obsStatus: ''
+    });
+    setSelectedRecheck(null);
+    setEditMode(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.id || !formData.reObs || !formData.reTreadDepth) {
+      setMessage('Please fill all required fields');
       return;
     }
 
-    // value is the observation record from backend
-    const recheckNo = 'RE-' + Date.now();
-    const reObsDate = new Date().toISOString().split('T')[0];
-    setForm({
-      recheckNo,
-      obsNo: value.obsNo || value.regNo || '',
-      claimNo: value.claimNo || '',
-      dealer: value.dealer || '',
-      brand: value.brand || '',
-      size: value.size || '',
-      serialNo: value.serialNo || '',
-      obsStatus: value.obsStatus || '',
-      consultantName: value.consultantName || '',
-      obsDate: value.obsDate ? value.obsDate.split('T')[0] : (value.obsDate || ''),
-      techObs: value.techObs || '',
-      treadDepth: value.treadDepth || '',
-      reObs: '',
-      reTreadDepth: '',
-      reObsDate
-    });
-  };
-
-  const handleSave = async () => {
+    setLoading(true);
     try {
-      await axios.post('/api/recheck/add', form);
-      setOpenAdd(false);
+      if (editMode && selectedRecheck) {
+        await updateRecheck(selectedRecheck.recheckNo, formData);
+        setMessage('Recheck updated successfully!');
+      } else {
+        await createRecheck(formData);
+        setMessage('Recheck created successfully!');
+      }
+      
       fetchRechecks();
-    } catch (err) {
-      console.error('save error', err?.response?.data || err.message);
-      alert('Save failed: ' + (err?.response?.data?.error || err.message));
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error saving recheck:', error);
+      setMessage('Error saving recheck data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleOpenView = async (row) => {
-    setViewItem(row);
-  };
-
-  const handleOpenEdit = (row) => {
-    setEditItem({
-      recheckNo: row.recheckNo,
-      reObs: row.reObs || '',
-      reTreadDepth: row.reTreadDepth || '',
-      reObsDate: row.reObsDate ? (row.reObsDate.split ? row.reObsDate.split('T')[0] : row.reObsDate) : ''
+  const handleEdit = (recheck) => {
+    setSelectedRecheck(recheck);
+    setFormData({
+      id: recheck.id,
+      reObsDate: recheck.reObsDate ? format(new Date(recheck.reObsDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      reObs: recheck.reObs || '',
+      reTreadDepth: recheck.reTreadDepth || ''
     });
+    setRegisterData({
+      claimNo: recheck.claimNo || '',
+      dealerView: recheck.dealerView || '',
+      brand: recheck.brand || '',
+      size: recheck.size || '',
+      treadDepth: recheck.treadDepth || '',
+      techObs: recheck.techObs || '',
+      obsDate: recheck.obsDate ? format(new Date(recheck.obsDate), 'yyyy-MM-dd') : '',
+      obsStatus: recheck.obsStatus || ''
+    });
+    setEditMode(true);
+    setOpenDialog(true);
   };
 
-  const handleUpdate = async () => {
-    try {
-      await axios.put(`/api/recheck/${encodeURIComponent(editItem.recheckNo)}`, {
-        reObs: editItem.reObs, reTreadDepth: editItem.reTreadDepth, reObsDate: editItem.reObsDate
-      });
-      setEditItem(null);
-      fetchRechecks();
-    } catch (err) {
-      console.error('update error', err?.response?.data || err.message);
-      alert('Update failed: ' + (err?.response?.data?.error || err.message));
+  const handleDelete = async (recheckNo) => {
+    if (window.confirm('Are you sure you want to delete this recheck?')) {
+      try {
+        await deleteRecheck(recheckNo);
+        setMessage('Recheck deleted successfully!');
+        fetchRechecks();
+      } catch (error) {
+        console.error('Error deleting recheck:', error);
+        setMessage('Error deleting recheck');
+      }
     }
   };
 
-  const handlePrint = (item) => {
-    // simple print window for record
-    const html = `
-      <html><head><title>Recheck ${item.recheckNo}</title></head>
-      <body>
-        <h2>Recheck: ${item.recheckNo}</h2>
-        <p><b>Obs No:</b> ${item.obsNo}</p>
-        <p><b>Claim No:</b> ${item.claimNo}</p>
-        <p><b>Dealer:</b> ${item.dealer}</p>
-        <p><b>Brand:</b> ${item.brand}</p>
-        <p><b>Size:</b> ${item.size}</p>
-        <p><b>Serial No:</b> ${item.serialNo}</p>
-        <p><b>Previous Tech Obs:</b> ${item.techObs}</p>
-        <p><b>Recheck Tech Obs:</b> ${item.reObs}</p>
-        <p><b>Previous Tread Depth:</b> ${item.treadDepth}</p>
-        <p><b>Recheck Tread Depth:</b> ${item.reTreadDepth}</p>
-        <p><b>Recheck Date:</b> ${item.reObsDate ? item.reObsDate.split ? item.reObsDate.split('T')[0] : item.reObsDate : ''}</p>
-      </body></html>`;
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
-    w.print();
+  const handlePrint = (recheck) => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Recheck Note - ${recheck.formattedRecheckNo}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .section { margin-bottom: 20px; }
+            .field { margin-bottom: 10px; }
+            .label { font-weight: bold; }
+            .value { margin-left: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Recheck Note</h1>
+            <h2>Recheck No: ${recheck.formattedRecheckNo}</h2>
+          </div>
+          
+          <div class="section">
+            <h3>Basic Information</h3>
+            <div class="field"><span class="label">Claim No:</span> <span class="value">${recheck.claimNo || 'N/A'}</span></div>
+            <div class="field"><span class="label">Dealer:</span> <span class="value">${recheck.dealerView || 'N/A'}</span></div>
+            <div class="field"><span class="label">Brand:</span> <span class="value">${recheck.brand || 'N/A'}</span></div>
+            <div class="field"><span class="label">Size:</span> <span class="value">${recheck.size || 'N/A'}</span></div>
+            <div class="field"><span class="label">Serial No:</span> <span class="value">${recheck.treadDepth || 'N/A'}</span></div>
+          </div>
+
+          <div class="section">
+            <h3>Previous Observation Details</h3>
+            <div class="field"><span class="label">Observation Date:</span> <span class="value">${recheck.obsDate ? format(new Date(recheck.obsDate), 'yyyy-MM-dd') : 'N/A'}</span></div>
+            <div class="field"><span class="label">Observation Status:</span> <span class="value">${recheck.obsStatus || 'N/A'}</span></div>
+            <div class="field"><span class="label">Technical Observations:</span></div>
+            <div class="value" style="white-space: pre-wrap;">${recheck.techObs || 'N/A'}</div>
+          </div>
+
+          <div class="section">
+            <h3>Recheck Details</h3>
+            <div class="field"><span class="label">Recheck Date:</span> <span class="value">${recheck.reObsDate ? format(new Date(recheck.reObsDate), 'yyyy-MM-dd') : 'N/A'}</span></div>
+            <div class="field"><span class="label">Present Tread Depth:</span> <span class="value">${recheck.reTreadDepth || 'N/A'}</span></div>
+            <div class="field"><span class="label">Present Observations:</span></div>
+            <div class="value" style="white-space: pre-wrap;">${recheck.reObs || 'N/A'}</div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleOpenDialog = () => {
+    resetForm();
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    resetForm();
   };
 
   return (
-    <Box p={2}>
-      <Button variant="contained" onClick={handleOpenAdd}>Add Recheck Note</Button>
+    <Box sx={{ p: 3 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" gutterBottom>
+            Recheck Notes
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenDialog}
+          >
+            Add Recheck Note
+          </Button>
+        </Box>
 
-      {/* Add Dialog */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add Recheck Note</DialogTitle>
-        <DialogContent>
-          <Box mt={1}>
-            <Autocomplete
-              options={regNos}
-              getOptionLabel={(opt) => opt.regNo || opt.obsNo || ''}
-              onChange={handleSelectReg}
-              renderInput={(params) => <TextField {...params} label="Select Reg No (type to search)" />}
-              freeSolo={false}
-            />
-          </Box>
+        {message && (
+          <Alert severity={message.includes('Error') ? 'error' : 'success'} sx={{ mb: 2 }}>
+            {message}
+          </Alert>
+        )}
 
-          {form.obsNo ? (
-            <Box mt={2}>
-              <TextField label="Observation No" value={form.obsNo} fullWidth margin="dense" disabled />
-              <TextField label="Recheck No" value={form.recheckNo} fullWidth margin="dense" disabled />
-              <TextField label="Claim No" value={form.claimNo} fullWidth margin="dense" disabled />
-              <TextField label="Dealer" value={form.dealer} fullWidth margin="dense" disabled />
-              <TextField label="Brand" value={form.brand} fullWidth margin="dense" disabled />
-              <TextField label="Size" value={form.size} fullWidth margin="dense" disabled />
-              <TextField label="Serial No" value={form.serialNo} fullWidth margin="dense" disabled />
-              <TextField label="Observation Status" value={form.obsStatus} fullWidth margin="dense" disabled />
-              <TextField label="Consultant" value={form.consultantName} fullWidth margin="dense" disabled />
-              <TextField label="Previous Observation Date" value={form.obsDate} fullWidth margin="dense" disabled />
-              <TextField label="Recheck Observation Date" type="date"
-                value={form.reObsDate || ''}
-                onChange={(e) => setForm({ ...form, reObsDate: e.target.value })}
-                fullWidth margin="dense"
-              />
-
-              <Typography mt={2}><b>Technical Observation</b></Typography>
-              <TextField label="Previous" value={form.techObs} fullWidth margin="dense" disabled />
-              <TextField label="Present (reObs)" value={form.reObs || ''} onChange={(e) => setForm({ ...form, reObs: e.target.value })} fullWidth margin="dense" />
-
-              <Typography mt={2}><b>Tread Depth</b></Typography>
-              <TextField label="Previous" value={form.treadDepth} fullWidth margin="dense" disabled />
-              <TextField label="Present (reTreadDepth)" value={form.reTreadDepth || ''} onChange={(e) => setForm({ ...form, reTreadDepth: e.target.value })} fullWidth margin="dense" />
-            </Box>
-          ) : (
-            <Typography mt={2} color="textSecondary">Select a Reg No to autofill fields</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.recheckNo}>Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* View Dialog */}
-      <Dialog open={!!viewItem} onClose={() => setViewItem(null)} fullWidth maxWidth="sm">
-        <DialogTitle>View Recheck</DialogTitle>
-        <DialogContent>
-          {viewItem && (
-            <Box>
-              <Typography><b>Recheck No:</b> {viewItem.recheckNo}</Typography>
-              <Typography><b>Obs No:</b> {viewItem.obsNo}</Typography>
-              <Typography><b>Claim No:</b> {viewItem.claimNo}</Typography>
-              <Typography><b>Dealer:</b> {viewItem.dealer}</Typography>
-              <Typography><b>Brand:</b> {viewItem.brand}</Typography>
-              <Typography><b>Size:</b> {viewItem.size}</Typography>
-              <Typography><b>Serial No:</b> {viewItem.serialNo}</Typography>
-              <Typography><b>Previous Tech Obs:</b> {viewItem.techObs}</Typography>
-              <Typography><b>Recheck Tech Obs:</b> {viewItem.reObs}</Typography>
-              <Typography><b>Recheck Date:</b> {viewItem.reObsDate ? viewItem.reObsDate.split ? viewItem.reObsDate.split('T')[0] : viewItem.reObsDate : ''}</Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewItem(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editItem} onClose={() => setEditItem(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Edit Recheck</DialogTitle>
-        <DialogContent>
-          {editItem && (
-            <Box>
-              <TextField label="Recheck No" value={editItem.recheckNo} fullWidth margin="dense" disabled />
-              <TextField label="ReObs Date" type="date" value={editItem.reObsDate || ''}
-                onChange={(e) => setEditItem({ ...editItem, reObsDate: e.target.value })} fullWidth margin="dense" />
-              <TextField label="ReObs (Present)" value={editItem.reObs}
-                onChange={(e) => setEditItem({ ...editItem, reObs: e.target.value })} fullWidth margin="dense" multiline minRows={2} />
-              <TextField label="ReTreadDepth (Present)" value={editItem.reTreadDepth}
-                onChange={(e) => setEditItem({ ...editItem, reTreadDepth: e.target.value })} fullWidth margin="dense" />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditItem(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleUpdate}>Update</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Table */}
-      <TableContainer component={Paper} sx={{ mt: 3 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Recheck No</TableCell>
-              <TableCell>Obs No</TableCell>
-              <TableCell>Claim No</TableCell>
-              <TableCell>Dealer</TableCell>
-              <TableCell>Recheck Date</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rechecks.map((row) => (
-              <TableRow key={row.recheckNo || row.id}>
-                <TableCell>{row.recheckNo}</TableCell>
-                <TableCell>{row.obsNo}</TableCell>
-                <TableCell>{row.claimNo}</TableCell>
-                <TableCell>{row.dealer}</TableCell>
-                <TableCell>{row.reObsDate ? (row.reObsDate.split ? row.reObsDate.split('T')[0] : row.reObsDate) : ''}</TableCell>
-                <TableCell>
-                  <IconButton size="small" onClick={() => handleOpenView(row)}><VisibilityIcon /></IconButton>
-                  <IconButton size="small" onClick={() => handleOpenEdit(row)}><EditIcon /></IconButton>
-                  <IconButton size="small" onClick={() => handlePrint(row)}><PrintIcon /></IconButton>
-                </TableCell>
+        {/* Rechecks Table */}
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Recheck No</TableCell>
+                <TableCell>Claim No</TableCell>
+                <TableCell>Dealer</TableCell>
+                <TableCell>Brand</TableCell>
+                <TableCell>Size</TableCell>
+                <TableCell>Recheck Date</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
-            ))}
-            {rechecks.length === 0 && (
-              <TableRow><TableCell colSpan={6} align="center">No rechecks yet</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {rechecks.map((recheck) => (
+                <TableRow key={recheck.recheckNo}>
+                  <TableCell>{recheck.formattedRecheckNo}</TableCell>
+                  <TableCell>{recheck.claimNo}</TableCell>
+                  <TableCell>{recheck.dealerView}</TableCell>
+                  <TableCell>{recheck.brand}</TableCell>
+                  <TableCell>{recheck.size}</TableCell>
+                  <TableCell>
+                    {recheck.reObsDate ? format(new Date(recheck.reObsDate), 'yyyy-MM-dd') : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton 
+                      color="primary" 
+                      onClick={() => handleEdit(recheck)}
+                      title="Edit"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                      color="error" 
+                      onClick={() => handleDelete(recheck.recheckNo)}
+                      title="Delete"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    <IconButton 
+                      color="info" 
+                      onClick={() => handlePrint(recheck)}
+                      title="Print"
+                    >
+                      <PrintIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Add/Edit Dialog */}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+          <DialogTitle>
+            {editMode ? 'Edit Recheck Note' : 'Add Recheck Note'}
+          </DialogTitle>
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              <Grid container spacing={2}>
+                {/* Register Selection */}
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={registers}
+                    getOptionLabel={(option) => `ID: ${option.id} - Claim: ${option.claimNo} - ${option.brand} ${option.size}`}
+                    value={registers.find(reg => reg.id === formData.id) || null}
+                    onChange={handleRegisterChange}
+                    isOptionEqualToValue={(option, value) => option.id === value?.id}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Register (ID)"
+                        required
+                        fullWidth
+                      />
+                    )}
+                    disabled={editMode}
+                  />
+                </Grid>
+
+                {/* Basic Information Card */}
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Basic Information
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Claim No"
+                            value={registerData.claimNo}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Dealer"
+                            value={registerData.dealerView}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Brand"
+                            value={registerData.brand}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Size"
+                            value={registerData.size}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Previous Observation Card */}
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Previous Observation Details
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Serial No"
+                            value={registerData.treadDepth}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                            multiline
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Observation Date"
+                            value={registerData.obsDate}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Previous Technical Observations"
+                            value={registerData.techObs}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                            multiline
+                            rows={3}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Observation Status"
+                            value={registerData.obsStatus}
+                            InputProps={{ readOnly: true }}
+                            variant="filled"
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Recheck Details Card */}
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Recheck Details
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Recheck Date"
+                            type="date"
+                            name="reObsDate"
+                            value={formData.reObsDate}
+                            onChange={handleInputChange}
+                            InputLabelProps={{ shrink: true }}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Present Tread Depth"
+                            name="reTreadDepth"
+                            value={formData.reTreadDepth}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g., 6,6,6,6"
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Present Observations"
+                            name="reObs"
+                            value={formData.reObs}
+                            onChange={handleInputChange}
+                            multiline
+                            rows={4}
+                            required
+                            placeholder="Enter present observations..."
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDialog}>Cancel</Button>
+              <Button type="submit" variant="contained" disabled={loading}>
+                {loading ? 'Saving...' : (editMode ? 'Update' : 'Save')}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      </Paper>
     </Box>
   );
-}
+};
 
+export default RecheckNote;

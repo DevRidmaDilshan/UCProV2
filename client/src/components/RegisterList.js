@@ -5,7 +5,7 @@ import {
   TableCell, 
   TableContainer, 
   TableHead, 
- TableRow, 
+  TableRow, 
   Paper, 
   Button, 
   IconButton,
@@ -21,12 +21,19 @@ import {
   Card,
   CardContent,
   Grid,
-  TablePagination
+  TablePagination,
+  Checkbox,
+  FormControlLabel,
+  Menu,
+  MenuItem,
+  Tooltip
 } from '@mui/material';
-import { Edit, Delete, Print, Visibility, Add } from '@mui/icons-material';
+import { Edit, Delete, Print, Visibility, Add, Download, FilterList } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { getAllRegisters, deleteRegister } from '../services/api';
 import RegisterForm from './RegisterForm';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const RegisterList = () => {
   const [registers, setRegisters] = useState([]);
@@ -39,6 +46,28 @@ const RegisterList = () => {
   const [viewRegister, setViewRegister] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // New states for report generation
+  const [fromRegNo, setFromRegNo] = useState('');
+  const [toRegNo, setToRegNo] = useState('');
+  const [selectedColumns, setSelectedColumns] = useState({
+    regNo: true,
+    receivedDate: true,
+    claimNo: true,
+    dealer: true,
+    dealerCode: true,
+    brand: true,
+    size: true,
+    sizeCode: true,
+    serialNo: true,
+    obsNo: true,
+    consultant: true,
+    treadDepth: true,
+    obsDate: true,
+    techObs: true,
+    status: true
+  });
+  const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
 
   useEffect(() => {
     fetchRegisters();
@@ -96,8 +125,323 @@ const RegisterList = () => {
     setPage(0);
   };
 
+  const handleColumnToggle = (column) => {
+    setSelectedColumns(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }));
+  };
+
+  const getFilteredRegistersByRange = () => {
+    if (!fromRegNo && !toRegNo) return registers;
+    
+    const from = parseInt(fromRegNo) || 0;
+    const to = parseInt(toRegNo) || Number.MAX_SAFE_INTEGER;
+    
+    return registers.filter(register => {
+      const regNo = parseInt(register.id);
+      return regNo >= from && regNo <= to;
+    });
+  };
+
+  const handlePrintReport = () => {
+    const filteredByRange = getFilteredRegistersByRange();
+    const filteredRegisters = filteredByRange.filter(register => {
+      const search = searchTerm?.toLowerCase() || '';
+      return (
+        (regNoSearch ? register.id?.toString().includes(regNoSearch) : true) &&
+        (search ? (
+          (register.claimNo ?? '').toLowerCase().includes(search) ||
+          (register.dealerCode ?? '').toLowerCase().includes(search) ||
+          (register.serialNo ?? '').toLowerCase().includes(search) ||
+          (register.obsNo ?? '').toLowerCase().includes(search) ||
+          (register.dealerName ?? '').toLowerCase().includes(search)
+        ) : true)
+      );
+    });
+
+    const sortedRegisters = [...filteredRegisters].sort(
+      (a, b) => Number(b.id) - Number(a.id)
+    );
+
+    // Create printable content
+    const columns = [];
+    const headers = [];
+
+    if (selectedColumns.regNo) {
+      columns.push('id');
+      headers.push('Reg No');
+    }
+    if (selectedColumns.receivedDate) {
+      columns.push('receivedDate');
+      headers.push('Received Date');
+    }
+    if (selectedColumns.claimNo) {
+      columns.push('claimNo');
+      headers.push('Claim No');
+    }
+    if (selectedColumns.dealer) {
+      columns.push('dealer');
+      headers.push('Dealer');
+    }
+    if (selectedColumns.dealerCode) {
+      columns.push('dealerCode');
+      headers.push('Dealer Code');
+    }
+    if (selectedColumns.brand) {
+      columns.push('brand');
+      headers.push('Brand');
+    }
+    if (selectedColumns.size) {
+      columns.push('size');
+      headers.push('Size');
+    }
+    if (selectedColumns.sizeCode) {
+      columns.push('sizeCode');
+      headers.push('Size Code');
+    }
+    if (selectedColumns.serialNo) {
+      columns.push('serialNo');
+      headers.push('Serial No');
+    }
+    if (selectedColumns.obsNo) {
+      columns.push('obsNo');
+      headers.push('Observation No');
+    }
+    if (selectedColumns.consultant) {
+      columns.push('consultantName');
+      headers.push('Consultant');
+    }
+    if (selectedColumns.treadDepth) {
+      columns.push('treadDepth');
+      headers.push('Tread Depth');
+    }
+    if (selectedColumns.obsDate) {
+      columns.push('obsDate');
+      headers.push('Observation Date');
+    }
+    if (selectedColumns.techObs) {
+      columns.push('techObs');
+      headers.push('Technical Observation');
+    }
+    if (selectedColumns.status) {
+      columns.push('obsStatus');
+      headers.push('Status');
+    }
+
+    const tableRows = sortedRegisters.map(register => {
+      return columns.map(col => {
+        if (col === 'receivedDate' || col === 'obsDate') {
+          return register[col] ? format(new Date(register[col]), 'dd/MM/yyyy') : 'N/A';
+        }
+        if (col === 'dealer') {
+          return register.dealerName || register.dealerCode || 'N/A';
+        }
+        if (col === 'obsStatus') {
+          return register.obsStatus || 'Pending';
+        }
+        return register[col] || 'N/A';
+      });
+    });
+
+    const content = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>UC Tyre Register Report</title>
+        <style>
+          @page { size: landscape; margin: 10mm; }
+          body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 18px; }
+          .report-info { margin-bottom: 15px; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+          th { background-color: #f0f0f0; font-weight: bold; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>UC Tyre Register Report</h1>
+          <div class="report-info">
+            <p>Generated on: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+            ${fromRegNo || toRegNo ? `<p>Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'}</p>` : ''}
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              ${headers.map(header => `<th>${header}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows.map(row => `
+              <tr>
+                ${row.map(cell => `<td>${cell}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleDownloadPDF = () => {
+    const filteredByRange = getFilteredRegistersByRange();
+    const filteredRegisters = filteredByRange.filter(register => {
+      const search = searchTerm?.toLowerCase() || '';
+      return (
+        (regNoSearch ? register.id?.toString().includes(regNoSearch) : true) &&
+        (search ? (
+          (register.claimNo ?? '').toLowerCase().includes(search) ||
+          (register.dealerCode ?? '').toLowerCase().includes(search) ||
+          (register.serialNo ?? '').toLowerCase().includes(search) ||
+          (register.obsNo ?? '').toLowerCase().includes(search) ||
+          (register.dealerName ?? '').toLowerCase().includes(search)
+        ) : true)
+      );
+    });
+
+    const sortedRegisters = [...filteredRegisters].sort(
+      (a, b) => Number(b.id) - Number(a.id)
+    );
+
+    // Create PDF with landscape orientation
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Title
+    doc.setFontSize(16);
+    doc.text('UC Tyre Register Report', 14, 15);
+    
+    // Report info
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 22);
+    if (fromRegNo || toRegNo) {
+      doc.text(`Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'}`, 14, 28);
+    }
+
+    // Prepare table data
+    const columns = [];
+    const headers = [];
+
+    if (selectedColumns.regNo) {
+      columns.push('id');
+      headers.push('Reg No');
+    }
+    if (selectedColumns.receivedDate) {
+      columns.push('receivedDate');
+      headers.push('Received Date');
+    }
+    if (selectedColumns.claimNo) {
+      columns.push('claimNo');
+      headers.push('Claim No');
+    }
+    if (selectedColumns.dealer) {
+      columns.push('dealer');
+      headers.push('Dealer');
+    }
+    if (selectedColumns.dealerCode) {
+      columns.push('dealerCode');
+      headers.push('Dealer Code');
+    }
+    if (selectedColumns.brand) {
+      columns.push('brand');
+      headers.push('Brand');
+    }
+    if (selectedColumns.size) {
+      columns.push('size');
+      headers.push('Size');
+    }
+    if (selectedColumns.sizeCode) {
+      columns.push('sizeCode');
+      headers.push('Size Code');
+    }
+    if (selectedColumns.serialNo) {
+      columns.push('serialNo');
+      headers.push('Serial No');
+    }
+    if (selectedColumns.obsNo) {
+      columns.push('obsNo');
+      headers.push('Observation No');
+    }
+    if (selectedColumns.consultant) {
+      columns.push('consultantName');
+      headers.push('Consultant');
+    }
+    if (selectedColumns.treadDepth) {
+      columns.push('treadDepth');
+      headers.push('Tread Depth');
+    }
+    if (selectedColumns.obsDate) {
+      columns.push('obsDate');
+      headers.push('Observation Date');
+    }
+    if (selectedColumns.techObs) {
+      columns.push('techObs');
+      headers.push('Technical Observation');
+    }
+    if (selectedColumns.status) {
+      columns.push('obsStatus');
+      headers.push('Status');
+    }
+
+    const tableData = sortedRegisters.map(register => {
+      return columns.map(col => {
+        if (col === 'receivedDate' || col === 'obsDate') {
+          return register[col] ? format(new Date(register[col]), 'dd/MM/yyyy') : 'N/A';
+        }
+        if (col === 'dealer') {
+          return register.dealerName || register.dealerCode || 'N/A';
+        }
+        if (col === 'obsStatus') {
+          return register.obsStatus || 'Pending';
+        }
+        if (col === 'techObs') {
+          return (register[col] || 'N/A').substring(0, 50) + (register[col] && register[col].length > 50 ? '...' : '');
+        }
+        return register[col] || 'N/A';
+      });
+    });
+
+    // Add table to PDF using autoTable function directly
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 35,
+      styles: { 
+        fontSize: 8, 
+        cellPadding: 2,
+        overflow: 'linebreak'
+      },
+      headStyles: { 
+        fillColor: [66, 66, 66],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { top: 35 },
+      theme: 'grid'
+    });
+
+    // Save PDF
+    doc.save(`tyre-register-report-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
+  };
+
   const handlePrint = (register) => {
-    // Determine header and note number based on observation status
     let headerTitle = "PENDING NOTE";
     let noteNumberLabel = "PENDING No";
     
@@ -112,7 +456,6 @@ const RegisterList = () => {
       noteNumberLabel = "SCN No";
     }
 
-    // Format technical observations with proper line breaks
     const formattedTechObs = register.techObs ? register.techObs.replace(/\n/g, '<br/>') : 'N/A';
 
     const content = `
@@ -138,8 +481,6 @@ const RegisterList = () => {
           padding: 10px;
           box-sizing: border-box;
         }
-
-        /* Header (top-right) */
         .header {
           text-align: right;
           margin-bottom: 5px;
@@ -147,8 +488,6 @@ const RegisterList = () => {
         .header div {
           margin: 2px 0;
         }
-
-        /* Title */
         .title {
           text-align: center;
           font-weight: bold;
@@ -157,8 +496,6 @@ const RegisterList = () => {
           text-transform: uppercase;
           text-decoration: underline;
         }
-
-        /* Generic table */
         table {
           border-collapse: collapse;
           margin-bottom: 8px;
@@ -169,45 +506,35 @@ const RegisterList = () => {
           text-align: center;
           vertical-align: middle;
         }
-
-        /* Claim Info Table (small right box) */
         .claim-info {
-          width: 45%;   /* control width */
-          margin-left: auto; /* push to right */
+          width: 45%;
+          margin-left: auto;
           margin-bottom: 15px;
         }
         .claim-info th, .claim-info td {
-          height: 25px; /* control height */
+          height: 25px;
         }
-
-        /* Agent/Customer */
         .agent-customer {
           width: 100%;
         }
         .agent-customer th, .agent-customer td {
           height: 30px;
         }
-
-        /* Tyre details */
         .tyre-details {
           width: 100%;
         }
         .tyre-details th, .tyre-details td {
           height: 25px;
         }
-
-        /* Observations */
         .observations {
           width: 100%;
         }
         .observations td {
-          height: auto; /* auto height for text area */
+          height: auto;
           min-height: 80px;
           text-align: left;
           padding: 8px;
         }
-
-        /* Signatures row */
         .signatures {
           display: flex;
           justify-content: space-between;
@@ -217,17 +544,13 @@ const RegisterList = () => {
           width: 45%;
           text-align: center;
         }
-
-        /* Refund Table */
         .refund-table {
-          width: 60%;              /* control size */
-          margin: 0 0 20px auto;   /* push to right */
+          width: 60%;
+          margin: 0 0 20px auto;
         }
         .refund-table th, .refund-table td {
           height: 15px;
         }
-
-        /* Approval */
         .approval {
           display: flex;
           justify-content: space-between;
@@ -236,15 +559,12 @@ const RegisterList = () => {
         .approval div {
           width: 45%;
         }
-
-        /* Footer */
         .footer {
           text-align: center;
           font-size: 12px;
           margin-top: 20px;
           font-style: italic;
         }
-        
         @media print {
           body { 
             margin: 0;
@@ -266,17 +586,11 @@ const RegisterList = () => {
           <button onclick="window.close()">Close</button>
       </div>
         <div class="container">
-
-          <!-- Header -->
           <div class="header">
             <div>Reg. No:<b>${register.id}</b></div>
             <div>${noteNumberLabel}: <b>${register.obsNo || 'N/A'}</b></div>
           </div>
-
-          <!-- Title -->
           <div class="title">${headerTitle}</div>
-
-          <!-- Claim Info -->
           <table class="claim-info">
             <tr>
               <th style="width: 50%;">Claim No</th>
@@ -287,8 +601,6 @@ const RegisterList = () => {
               <td></td>
             </tr>
           </table>
-
-          <!-- Agent / Customer -->
           <table class="agent-customer" style="width:100%;">
             <tr>
               <th style="width: 50%;">AGENT</th>
@@ -299,8 +611,6 @@ const RegisterList = () => {
               <td></td>
             </tr>
           </table>
-
-          <!-- Tyre Details -->
           <table class="tyre-details">
             <tr>
               <th style="width: 33%;">Brand</th>
@@ -313,8 +623,6 @@ const RegisterList = () => {
               <td>${register.serialNo || 'N/A'}</td>
             </tr>
           </table>
-
-          <!-- Observations & Tread Depth -->
           <table class="observations">
             <tr>
               <th style="width: 25%; text-align: left; height: 80px;">Technical Observations :</th>
@@ -327,19 +635,15 @@ const RegisterList = () => {
               <td style="width: 75%; height: 20px; text-align: center;">${register.treadDepth || 'N/A'}</td>
             </tr>
           </table>
-
-                <b>
-                  ${register.obsStatus === 'Recommended' 
-                    ? 'Refund : Recommended' 
-                    : register.obsStatus === 'Forwarded for Management Decision' 
-                      ? 'Forwarded for Management Decision' 
-                    : register.obsStatus === 'Not Recommended' 
-                      ? 'Refund : Not Recommended'
-                      : 'Refund : Not Recommended'}
-                </b>
-          
-
-          <!-- Observation Date & Consultant -->
+          <b>
+            ${register.obsStatus === 'Recommended' 
+              ? 'Refund : Recommended' 
+              : register.obsStatus === 'Forwarded for Management Decision' 
+                ? 'Forwarded for Management Decision' 
+              : register.obsStatus === 'Not Recommended' 
+                ? 'Refund : Not Recommended'
+                : 'Refund : Not Recommended'}
+          </b>
           <div class="signatures">
             <div class="signature-box">
               ${register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'} <br>
@@ -356,9 +660,6 @@ const RegisterList = () => {
           _________________________________________________________________________________________________<br>
           <br>
           <br>
-
-
-          <!-- Refund Table -->
           <table class="refund-table">
             <tr>
               <th colspan="2">NSD</th>
@@ -377,14 +678,10 @@ const RegisterList = () => {
               <td></td>
             </tr>
           </table>
-
-          <!-- Approval -->
           <div class="approval">
             <div>Approved by:</div>
             <div>Accepted by:</div>
           </div>
-
-          <!-- Footer -->
           <div class="footer">
           <br><br>
           _______________________________________________________________________<br>
@@ -427,6 +724,99 @@ const RegisterList = () => {
         UC Tyre Register
       </Typography>
       
+      {/* Report Generation Section */}
+      <Card sx={{ mb: 2, ml: 'auto', width: 280 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2', textAlign: 'center' }}>
+            Generate Report
+          </Typography>
+          
+          {/* From and To fields stacked vertically */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+            <TextField
+              label="From Reg No"
+              variant="outlined"
+              size="small"
+              type="number"
+              value={fromRegNo}
+              onChange={(e) => setFromRegNo(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="To Reg No"
+              variant="outlined"
+              size="small"
+              type="number"
+              value={toRegNo}
+              onChange={(e) => setToRegNo(e.target.value)}
+              fullWidth
+            />
+          </Box>
+
+          {/* Column filter */}
+          <Tooltip title="Select columns to include in report">
+            <Button 
+              variant="outlined" 
+              startIcon={<FilterList />}
+              onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
+              fullWidth
+              sx={{ mb: 2 }}
+            >
+              Select Columns
+            </Button>
+          </Tooltip>
+
+          <Menu
+            anchorEl={columnMenuAnchor}
+            open={Boolean(columnMenuAnchor)}
+            onClose={() => setColumnMenuAnchor(null)}
+            PaperProps={{ style: { maxHeight: 400, width: 250 } }}
+          >
+            <MenuItem disabled>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                Select Columns to Include
+              </Typography>
+            </MenuItem>
+            {Object.keys(selectedColumns).map((column) => (
+              <MenuItem key={column} dense>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedColumns[column]}
+                      onChange={() => handleColumnToggle(column)}
+                    />
+                  }
+                  label={column.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                />
+              </MenuItem>
+            ))}
+          </Menu>
+
+          {/* Action buttons stacked vertically */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Button 
+              variant="contained" 
+              color="primary"
+              startIcon={<Print />}
+              onClick={handlePrintReport}
+              fullWidth
+            >
+              Print Report
+            </Button>
+            <Button 
+              variant="contained" 
+              color="secondary"
+              startIcon={<Download />}
+              onClick={handleDownloadPDF}
+              fullWidth
+            >
+              Download PDF
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Search and Add Section */}
       <Card sx={{ mb: 2 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
@@ -488,6 +878,7 @@ const RegisterList = () => {
         />
       )}
 
+      {/* Table */}
       <TableContainer 
         component={Paper} 
         elevation={3} 
@@ -502,7 +893,6 @@ const RegisterList = () => {
         <Table stickyHeader sx={{ minWidth: 1500 }}>
           <TableHead sx={{ bgcolor: '#f5f5f5' }}>
             <TableRow>
-              {/* First three columns with sticky positioning */}
               <TableCell sx={{ 
                 fontWeight: 'bold', 
                 position: 'sticky', 
@@ -534,7 +924,6 @@ const RegisterList = () => {
                 Claim No
               </TableCell>
               
-              {/* Remaining columns */}
               <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>Dealer</TableCell>
               <TableCell sx={{ fontWeight: 'bold', minWidth: 120 }}>Dealer Code</TableCell>
               <TableCell sx={{ fontWeight: 'bold', minWidth: 100 }}>Brand</TableCell>
@@ -571,18 +960,17 @@ const RegisterList = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={12} align="center">Loading...</TableCell>
+                <TableCell colSpan={16} align="center">Loading...</TableCell>
               </TableRow>
             ) : sortedRegisters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} align="center">No registers found</TableCell>
+                <TableCell colSpan={16} align="center">No registers found</TableCell>
               </TableRow>
             ) : (
               sortedRegisters
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((register) => (
                 <TableRow key={register.id} hover>
-                  {/* First three sticky columns */}
                   <TableCell sx={{ 
                     fontWeight: 'bold', 
                     position: 'sticky', 
@@ -612,7 +1000,6 @@ const RegisterList = () => {
                     {register.claimNo}
                   </TableCell>
                   
-                  {/* Remaining columns */}
                   <TableCell sx={{ minWidth: 150 }}>
                     {register.dealerName || register.dealerCode}
                     {register.dealerLocation && ` (${register.dealerLocation})`}
@@ -691,7 +1078,7 @@ const RegisterList = () => {
             )}
             {emptyRows > 0 && (
               <TableRow style={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={12} />
+                <TableCell colSpan={16} />
               </TableRow>
             )}
           </TableBody>
