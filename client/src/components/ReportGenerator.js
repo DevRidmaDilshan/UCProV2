@@ -15,12 +15,22 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination
+  TablePagination,
+  Card,
+  CardContent,
+  Checkbox,
+  FormControlLabel,
+  Menu,
+  Tooltip,
+  Grid
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
-import { generateReport, getInitialData, getAllConsultants } from '../services/api';
+import { FilterList, Print, Download } from '@mui/icons-material';
+import { generateReport, getInitialData, getAllConsultants, getAllRegisters } from '../services/api';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ReportGenerator = () => {
   const [filters, setFilters] = useState({
@@ -32,12 +42,35 @@ const ReportGenerator = () => {
     dealerView: ''
   });
 
+  const [fromRegNo, setFromRegNo] = useState('');
+  const [toRegNo, setToRegNo] = useState('');
+  const [selectedColumns, setSelectedColumns] = useState({
+    sNo: true, // Always include S.No
+    regNo: true,
+    receivedDate: true,
+    claimNo: true,
+    dealer: true,
+    dealerCode: true,
+    brand: true,
+    size: true,
+    sizeCode: true,
+    serialNo: true,
+    obsNo: true,
+    consultant: true,
+    treadDepth: true,
+    obsDate: true,
+    techObs: true,
+    status: true
+  });
+  const [columnMenuAnchor, setColumnMenuAnchor] = useState(null);
+
   const [reportData, setReportData] = useState([]);
-  const [sortedData, setSortedData] = useState([]); // Sorted data for display
+  const [sortedData, setSortedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
   const [dealerViews, setDealerViews] = useState([]);
+  const [allDealers, setAllDealers] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -53,10 +86,31 @@ const ReportGenerator = () => {
     const fetchInitialData = async () => {
       try {
         const { data } = await getInitialData();
-        setBrands(data.brands);
+        setBrands(data.brands || []);
 
         const consultantsRes = await getAllConsultants();
-        setConsultants(consultantsRes.data);
+        setConsultants(consultantsRes.data || []);
+
+        // Fetch all registers to get unique dealers
+        const registersRes = await getAllRegisters();
+        const registers = registersRes.data || [];
+        
+        // Extract unique dealers
+        const uniqueDealers = [];
+        const dealerMap = new Map();
+        
+        registers.forEach(register => {
+          if (register.dealerName && register.dealerCode && !dealerMap.has(register.dealerCode)) {
+            dealerMap.set(register.dealerCode, true);
+            uniqueDealers.push({
+              dealerName: register.dealerName,
+              dealerCode: register.dealerCode,
+              dealerView: register.dealerView
+            });
+          }
+        });
+        
+        setAllDealers(uniqueDealers);
 
         if (data.dealerViews) {
           setDealerViews(data.dealerViews);
@@ -74,14 +128,45 @@ const ReportGenerator = () => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleColumnToggle = (column) => {
+    setSelectedColumns(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }));
+  };
+
+  const getFilteredRegistersByRange = (data) => {
+    if (!fromRegNo && !toRegNo) return data;
+    
+    const from = parseInt(fromRegNo) || 0;
+    const to = parseInt(toRegNo) || Number.MAX_SAFE_INTEGER;
+    
+    return data.filter(register => {
+      const regNo = parseInt(register.id);
+      return regNo >= from && regNo <= to;
+    });
+  };
+
   const handleGenerateReport = async () => {
     setLoading(true);
     try {
-      const { data } = await generateReport(filters);
+      let filteredData = [];
 
-      let filteredData = data;
+      // If any filter is applied, use generateReport API, otherwise use getAllRegisters
+      if (filters.startDate || filters.endDate || filters.brand || filters.consultant || filters.dealerView || filters.obsStatus) {
+        const serverFiltered = await generateReport(filters);
+        filteredData = serverFiltered.data || [];
+      } else {
+        const { data } = await getAllRegisters();
+        filteredData = data || [];
+      }
+
+      // Apply Reg No range filter
+      filteredData = getFilteredRegistersByRange(filteredData);
+
+      // Apply observation status filter if not already applied by server
       if (filters.obsStatus && filters.obsStatus !== 'All Observations Status') {
-        filteredData = data.filter(item => item.obsStatus === filters.obsStatus);
+        filteredData = filteredData.filter(item => item.obsStatus === filters.obsStatus);
       }
 
       // Sort data by receivedDate in ascending order
@@ -93,7 +178,7 @@ const ReportGenerator = () => {
 
       setReportData(sortedByDate);
       setSortedData(sortedByDate);
-      setPage(0); // Reset to first page when new data is loaded
+      setPage(0);
     } catch (error) {
       console.error('Error generating report:', error);
       alert('Error generating report. Please try again.');
@@ -102,32 +187,342 @@ const ReportGenerator = () => {
     }
   };
 
+  const handlePrintReport = () => {
+    if (reportData.length === 0) {
+      alert('No data to print');
+      return;
+    }
+
+    const filteredByRange = getFilteredRegistersByRange(reportData);
+    
+    // Create printable content
+    const columns = [];
+    const headers = ['S.No']; // Always include S.No as first column
+
+    // Add selected columns
+    if (selectedColumns.regNo) {
+      columns.push('id');
+      headers.push('Reg No');
+    }
+    if (selectedColumns.receivedDate) {
+      columns.push('receivedDate');
+      headers.push('Received Date');
+    }
+    if (selectedColumns.claimNo) {
+      columns.push('claimNo');
+      headers.push('Claim No');
+    }
+    if (selectedColumns.dealer) {
+      columns.push('dealer');
+      headers.push('Dealer');
+    }
+    if (selectedColumns.dealerCode) {
+      columns.push('dealerCode');
+      headers.push('Dealer Code');
+    }
+    if (selectedColumns.brand) {
+      columns.push('brand');
+      headers.push('Brand');
+    }
+    if (selectedColumns.size) {
+      columns.push('size');
+      headers.push('Size');
+    }
+    if (selectedColumns.sizeCode) {
+      columns.push('sizeCode');
+      headers.push('Size Code');
+    }
+    if (selectedColumns.serialNo) {
+      columns.push('serialNo');
+      headers.push('Serial No');
+    }
+    if (selectedColumns.obsNo) {
+      columns.push('obsNo');
+      headers.push('Observation No');
+    }
+    if (selectedColumns.consultant) {
+      columns.push('consultantName');
+      headers.push('Consultant');
+    }
+    if (selectedColumns.treadDepth) {
+      columns.push('treadDepth');
+      headers.push('Tread Depth');
+    }
+    if (selectedColumns.obsDate) {
+      columns.push('obsDate');
+      headers.push('Observation Date');
+    }
+    if (selectedColumns.techObs) {
+      columns.push('techObs');
+      headers.push('Technical Observation');
+    }
+    if (selectedColumns.status) {
+      columns.push('obsStatus');
+      headers.push('Status');
+    }
+
+    const tableRows = filteredByRange.map((register, index) => {
+      const rowData = [index + 1]; // Start with S.No
+      
+      columns.forEach(col => {
+        if (col === 'receivedDate' || col === 'obsDate') {
+          rowData.push(register[col] ? format(new Date(register[col]), 'dd/MM/yyyy') : 'N/A');
+        } else if (col === 'dealer') {
+          rowData.push(register.dealerName || register.dealerCode || 'N/A');
+        } else if (col === 'obsStatus') {
+          rowData.push(register.obsStatus || 'Pending');
+        } else {
+          rowData.push(register[col] || 'N/A');
+        }
+      });
+      
+      return rowData;
+    });
+
+    const content = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>UC Tyre Register Report</title>
+        <style>
+          @page { size: landscape; margin: 10mm; }
+          body { font-family: Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 18px; }
+          .report-info { margin-bottom: 15px; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+          th { background-color: #f0f0f0; font-weight: bold; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>UC Tyre Register Report</h1>
+          <div class="report-info">
+            <p>Generated on: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+            ${fromRegNo || toRegNo ? `<p>Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'}</p>` : ''}
+            ${filters.startDate ? `<p>Start Date: ${filters.startDate}</p>` : ''}
+            ${filters.endDate ? `<p>End Date: ${filters.endDate}</p>` : ''}
+            ${filters.brand ? `<p>Brand: ${filters.brand}</p>` : ''}
+            ${filters.dealerView ? `<p>Dealer: ${filters.dealerView}</p>` : ''}
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              ${headers.map(header => `<th>${header}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows.map(row => `
+              <tr>
+                ${row.map(cell => `<td>${cell}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleDownloadPDF = () => {
+    if (reportData.length === 0) {
+      alert('No data to download');
+      return;
+    }
+
+    const filteredByRange = getFilteredRegistersByRange(reportData);
+
+    // Create PDF with landscape orientation
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Title
+    doc.setFontSize(16);
+    doc.text('UC Tyre Register Report', 14, 15);
+    
+    // Report info
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 22);
+    let yOffset = 28;
+    
+    if (fromRegNo || toRegNo) {
+      doc.text(`Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'}`, 14, yOffset);
+      yOffset += 6;
+    }
+    if (filters.startDate) {
+      doc.text(`Start Date: ${filters.startDate}`, 14, yOffset);
+      yOffset += 6;
+    }
+    if (filters.endDate) {
+      doc.text(`End Date: ${filters.endDate}`, 14, yOffset);
+      yOffset += 6;
+    }
+    if (filters.brand) {
+      doc.text(`Brand: ${filters.brand}`, 14, yOffset);
+      yOffset += 6;
+    }
+    if (filters.dealerView) {
+      doc.text(`Dealer: ${filters.dealerView}`, 14, yOffset);
+      yOffset += 6;
+    }
+
+    // Prepare table data
+    const columns = [];
+    const headers = ['S.No']; // Always include S.No as first column
+
+    // Add selected columns
+    if (selectedColumns.regNo) {
+      columns.push('id');
+      headers.push('Reg No');
+    }
+    if (selectedColumns.receivedDate) {
+      columns.push('receivedDate');
+      headers.push('Received Date');
+    }
+    if (selectedColumns.claimNo) {
+      columns.push('claimNo');
+      headers.push('Claim No');
+    }
+    if (selectedColumns.dealer) {
+      columns.push('dealer');
+      headers.push('Dealer');
+    }
+    if (selectedColumns.dealerCode) {
+      columns.push('dealerCode');
+      headers.push('Dealer Code');
+    }
+    if (selectedColumns.brand) {
+      columns.push('brand');
+      headers.push('Brand');
+    }
+    if (selectedColumns.size) {
+      columns.push('size');
+      headers.push('Size');
+    }
+    if (selectedColumns.sizeCode) {
+      columns.push('sizeCode');
+      headers.push('Size Code');
+    }
+    if (selectedColumns.serialNo) {
+      columns.push('serialNo');
+      headers.push('Serial No');
+    }
+    if (selectedColumns.obsNo) {
+      columns.push('obsNo');
+      headers.push('Observation No');
+    }
+    if (selectedColumns.consultant) {
+      columns.push('consultantName');
+      headers.push('Consultant');
+    }
+    if (selectedColumns.treadDepth) {
+      columns.push('treadDepth');
+      headers.push('Tread Depth');
+    }
+    if (selectedColumns.obsDate) {
+      columns.push('obsDate');
+      headers.push('Observation Date');
+    }
+    if (selectedColumns.techObs) {
+      columns.push('techObs');
+      headers.push('Technical Observation');
+    }
+    if (selectedColumns.status) {
+      columns.push('obsStatus');
+      headers.push('Status');
+    }
+
+    const tableData = filteredByRange.map((register, index) => {
+      const rowData = [index + 1]; // Start with S.No
+      
+      columns.forEach(col => {
+        if (col === 'receivedDate' || col === 'obsDate') {
+          rowData.push(register[col] ? format(new Date(register[col]), 'dd/MM/yyyy') : 'N/A');
+        } else if (col === 'dealer') {
+          rowData.push(register.dealerName || register.dealerCode || 'N/A');
+        } else if (col === 'obsStatus') {
+          rowData.push(register.obsStatus || 'Pending');
+        } else if (col === 'techObs') {
+          rowData.push((register[col] || 'N/A').substring(0, 50) + (register[col] && register[col].length > 50 ? '...' : ''));
+        } else {
+          rowData.push(register[col] || 'N/A');
+        }
+      });
+      
+      return rowData;
+    });
+
+    // Add table to PDF using autoTable function directly
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: yOffset + 10,
+      styles: { 
+        fontSize: 8, 
+        cellPadding: 2,
+        overflow: 'linebreak'
+      },
+      headStyles: { 
+        fillColor: [66, 66, 66],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { top: yOffset + 10 },
+      theme: 'grid'
+    });
+
+    // Save PDF
+    doc.save(`tyre-register-report-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
+  };
+
   const handleExportExcel = () => {
     if (reportData.length === 0) {
       alert('No data to export');
       return;
     }
 
-    // Define worksheet data with S.No column
-    const worksheetData = reportData.map((item, index) => ({
-      'S.No': index + 1,
-      'Reg No': item.id,
-      'Received Date': item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A',
-      'Claim No': item.claimNo,
-      'Dealer': item.dealerName || item.dealerCode,
-      'Dealer Code': item.dealerCode,
-      'Brand': item.brand,
-      'Size': item.size,
-      'Size Code': item.sizeCode,
-      'Serial No': item.serialNo,
-      'Observation Date': item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A',
-      'Remaining Tread Depth': item.treadDepth,
-      'Technical Observation': item.techObs,
-      'Observation No': item.obsNo || 'N/A',
-      'Status': item.obsStatus || 'Pending',
-      'Consultant': item.consultantName || 'N/A',
-      'Dealer View': item.dealerView || 'N/A'
-    }));
+    const filteredByRange = getFilteredRegistersByRange(reportData);
+
+    // Define worksheet data with S.No column as first column
+    const worksheetData = filteredByRange.map((item, index) => {
+      const rowData = {
+        'S.No': index + 1
+      };
+
+      // Add selected columns
+      if (selectedColumns.regNo) rowData['Reg No'] = item.id;
+      if (selectedColumns.receivedDate) rowData['Received Date'] = item.receivedDate ? format(new Date(item.receivedDate), 'dd/MM/yyyy') : 'N/A';
+      if (selectedColumns.claimNo) rowData['Claim No'] = item.claimNo;
+      if (selectedColumns.dealer) rowData['Dealer'] = item.dealerName || item.dealerCode;
+      if (selectedColumns.dealerCode) rowData['Dealer Code'] = item.dealerCode;
+      if (selectedColumns.brand) rowData['Brand'] = item.brand;
+      if (selectedColumns.size) rowData['Size'] = item.size;
+      if (selectedColumns.sizeCode) rowData['Size Code'] = item.sizeCode;
+      if (selectedColumns.serialNo) rowData['Serial No'] = item.serialNo;
+      if (selectedColumns.obsNo) rowData['Observation No'] = item.obsNo || 'N/A';
+      if (selectedColumns.obsDate) rowData['Observation Date'] = item.obsDate ? format(new Date(item.obsDate), 'dd/MM/yyyy') : 'N/A';
+      if (selectedColumns.treadDepth) rowData['Remaining Tread Depth'] = item.treadDepth;
+      if (selectedColumns.techObs) rowData['Technical Observation'] = item.techObs;
+      if (selectedColumns.status) rowData['Status'] = item.obsStatus || 'Pending';
+      if (selectedColumns.consultant) rowData['Consultant'] = item.consultantName || 'N/A';
+
+      return rowData;
+    });
 
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
@@ -140,11 +535,12 @@ const ReportGenerator = () => {
       { wch: 12 }, { wch: 10 }, { wch: 8 },  { wch: 10 },
       { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 30 },
       { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 20 }
-    ];
+    ].slice(0, Object.keys(worksheetData[0] || {}).length);
+    
     ws['!cols'] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, "UC Tyre Report");
-    XLSX.writeFile(wb, `uc_tyre_report_${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.xlsx`);
+    XLSX.writeFile(wb, `uc_tyre_report_${format(new Date(), 'yyyy-MM-dd-HH-mm')}.xlsx`);
   };
 
   const handleChangePage = (event, newPage) => {
@@ -156,129 +552,283 @@ const ReportGenerator = () => {
     setPage(0);
   };
 
-  // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - sortedData.length) : 0;
 
+  // Get visible columns for the table
+  const getVisibleColumns = () => {
+    const columns = [];
+    
+    // Always include S.No
+    columns.push({ key: 'sNo', label: 'S.No', width: 80 });
+    
+    // Add selected columns
+    if (selectedColumns.regNo) columns.push({ key: 'id', label: 'Reg No', width: 100 });
+    if (selectedColumns.receivedDate) columns.push({ key: 'receivedDate', label: 'Received Date', width: 120 });
+    if (selectedColumns.claimNo) columns.push({ key: 'claimNo', label: 'Claim No', width: 120 });
+    if (selectedColumns.dealer) columns.push({ key: 'dealer', label: 'Dealer', width: 150 });
+    if (selectedColumns.dealerCode) columns.push({ key: 'dealerCode', label: 'Dealer Code', width: 120 });
+    if (selectedColumns.brand) columns.push({ key: 'brand', label: 'Brand', width: 100 });
+    if (selectedColumns.size) columns.push({ key: 'size', label: 'Size', width: 100 });
+    if (selectedColumns.sizeCode) columns.push({ key: 'sizeCode', label: 'Size Code', width: 120 });
+    if (selectedColumns.serialNo) columns.push({ key: 'serialNo', label: 'Serial No', width: 150 });
+    if (selectedColumns.obsNo) columns.push({ key: 'obsNo', label: 'Observation No', width: 150 });
+    if (selectedColumns.consultant) columns.push({ key: 'consultantName', label: 'Consultant', width: 120 });
+    if (selectedColumns.treadDepth) columns.push({ key: 'treadDepth', label: 'Tread Depth', width: 120 });
+    if (selectedColumns.obsDate) columns.push({ key: 'obsDate', label: 'Observation Date', width: 120 });
+    if (selectedColumns.techObs) columns.push({ key: 'techObs', label: 'Technical Observation', width: 200 });
+    if (selectedColumns.status) columns.push({ key: 'obsStatus', label: 'Status', width: 150 });
+    
+    return columns;
+  };
+
+  const visibleColumns = getVisibleColumns();
+
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Typography variant="h5" gutterBottom>
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
         Report Generator
       </Typography>
 
-      {/* Filters in one row */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <TextField
-          label="Start Date"
-          type="date"
-          name="startDate"
-          value={filters.startDate}
-          onChange={handleFilterChange}
-          InputLabelProps={{ shrink: true }}
-          sx={{ width: 180 }}
-        />
-
-        <TextField
-          label="End Date"
-          type="date"
-          name="endDate"
-          value={filters.endDate}
-          onChange={handleFilterChange}
-          InputLabelProps={{ shrink: true }}
-          sx={{ width: 180 }}
-        />
-
-        <FormControl sx={{ width: 200 }}>
-          <InputLabel>Brand</InputLabel>
-          <Select
-            name="brand"
-            value={filters.brand}
-            label="Brand"
-            onChange={handleFilterChange}
-          >
-            <MenuItem value="">All Brands</MenuItem>
-            {brands.map((brand) => (
-              <MenuItem key={brand} value={brand}>
-                {brand}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl sx={{ width: 220 }}>
-          <InputLabel>Consultant</InputLabel>
-          <Select
-            name="consultant"
-            value={filters.consultant}
-            label="Consultant"
-            onChange={handleFilterChange}
-          >
-            <MenuItem value="">All Consultants</MenuItem>
-            {consultants.map((consultant) => (
-              <MenuItem
-                key={consultant.consultantName}
-                value={consultant.consultantName}
+      {/* Filters Section */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        {/* First Line: Start Date, End Date, Brand, Consultant, Observation Status, Dealer View */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              label="Start Date"
+              type="date"
+              name="startDate"
+              value={filters.startDate}
+              onChange={handleFilterChange}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              label="End Date"
+              type="date"
+              name="endDate"
+              value={filters.endDate}
+              onChange={handleFilterChange}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>Brand</InputLabel>
+              <Select
+                name="brand"
+                value={filters.brand}
+                label="Brand"
+                onChange={handleFilterChange}
               >
-                {consultant.consultantName}
+                <MenuItem value="">All Brands</MenuItem>
+                {brands.map((brand) => (
+                  <MenuItem key={brand} value={brand}>
+                    {brand}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>Consultant</InputLabel>
+              <Select
+                name="consultant"
+                value={filters.consultant}
+                label="Consultant"
+                onChange={handleFilterChange}
+              >
+                <MenuItem value="">All Consultants</MenuItem>
+                {consultants.map((consultant) => (
+                  <MenuItem
+                    key={consultant.consultantName}
+                    value={consultant.consultantName}
+                  >
+                    {consultant.consultantName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>Observation Status</InputLabel>
+              <Select
+                name="obsStatus"
+                value={filters.obsStatus}
+                label="Observation Status"
+                onChange={handleFilterChange}
+              >
+                {observationStatusOptions.map((status) => (
+                  <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
+                    {status}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <Autocomplete
+              options={[{ dealerName: 'All Dealers', dealerCode: '' }, ...allDealers]}
+              getOptionLabel={(option) => option.dealerName || 'All Dealers'}
+              value={
+                allDealers.find((dealer) => dealer.dealerName === filters.dealerView) ||
+                { dealerName: 'All Dealers', dealerCode: '' }
+              }
+              onChange={(e, newValue) => {
+                setFilters((prev) => ({
+                  ...prev,
+                  dealerView: newValue ? newValue.dealerName : ''
+                }));
+              }}
+              isOptionEqualToValue={(option, value) => option.dealerName === value.dealerName}
+              renderInput={(params) => (
+                <TextField {...params} label="Dealer" fullWidth />
+              )}
+              fullWidth
+            />
+          </Grid>
+        </Grid>
+
+        {/* Second Line: From Reg No, To Reg No, Select Columns */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="From Reg No"
+              variant="outlined"
+              size="small"
+              type="number"
+              value={fromRegNo}
+              onChange={(e) => setFromRegNo(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="To Reg No"
+              variant="outlined"
+              size="small"
+              type="number"
+              value={toRegNo}
+              onChange={(e) => setToRegNo(e.target.value)}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={12} md={6}>
+            <Tooltip title="Select columns to include in report">
+              <Button 
+                variant="outlined" 
+                startIcon={<FilterList />}
+                onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
+                fullWidth
+                sx={{ height: '40px' }}
+              >
+                Select Columns ({Object.values(selectedColumns).filter(Boolean).length} selected)
+              </Button>
+            </Tooltip>
+            <Menu
+              anchorEl={columnMenuAnchor}
+              open={Boolean(columnMenuAnchor)}
+              onClose={() => setColumnMenuAnchor(null)}
+              PaperProps={{ style: { maxHeight: 400, width: 250 } }}
+            >
+              <MenuItem disabled>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  Select Columns to Include
+                </Typography>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+              {Object.keys(selectedColumns).map((column) => (
+                <MenuItem key={column} dense>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedColumns[column]}
+                        onChange={() => handleColumnToggle(column)}
+                        disabled={column === 'sNo'} // S.No cannot be disabled
+                      />
+                    }
+                    label={column.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  />
+                </MenuItem>
+              ))}
+            </Menu>
+          </Grid>
+        </Grid>
 
-        <FormControl sx={{ width: 240 }}>
-          <InputLabel>Observation Status</InputLabel>
-          <Select
-            name="obsStatus"
-            value={filters.obsStatus}
-            label="Observation Status"
-            onChange={handleFilterChange}
-          >
-            {observationStatusOptions.map((status) => (
-              <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
-                {status}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {/* Third Line: Buttons */}
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              onClick={handleGenerateReport}
+              disabled={loading}
+              fullWidth
+              sx={{ py: 1 }}
+            >
+              {loading ? 'Generating...' : 'Generate Report'}
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button 
+              variant="contained" 
+              color="primary"
+              startIcon={<Print />}
+              onClick={handlePrintReport}
+              fullWidth
+              sx={{ py: 1 }}
+              disabled={reportData.length === 0}
+            >
+              Print Report
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button 
+              variant="contained" 
+              color="secondary"
+              startIcon={<Download />}
+              onClick={handleDownloadPDF}
+              fullWidth
+              sx={{ py: 1 }}
+              disabled={reportData.length === 0}
+            >
+              Download PDF
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="outlined"
+              onClick={handleExportExcel}
+              disabled={reportData.length === 0}
+              fullWidth
+              sx={{ py: 1 }}
+            >
+              Export to Excel
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
 
-        <Autocomplete
-          options={[{ dealerView: '', dealerName: 'All Dealers' }, ...dealerViews]}
-          getOptionLabel={(option) => option.dealerName || option.dealerView || option}
-          value={
-            dealerViews.find((dealer) => dealer.dealerView === filters.dealerView) ||
-            { dealerView: '', dealerName: 'All Dealers' }
-          }
-          onChange={(e, newValue) => {
-            setFilters((prev) => ({
-              ...prev,
-              dealerView: newValue ? newValue.dealerView : ''
-            }));
-          }}
-          isOptionEqualToValue={(option, value) => option.dealerView === value.dealerView}
-          renderInput={(params) => (
-            <TextField {...params} label="Dealer View" sx={{ width: 200 }} />
-          )}
-          sx={{ width: 200 }}
-        />
-      </Box>
-
-      {/* Buttons */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-        <Button
-          variant="contained"
-          onClick={handleGenerateReport}
-          disabled={loading}
-        >
-          {loading ? 'Generating...' : 'Generate Report'}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={handleExportExcel}
-          disabled={reportData.length === 0}
-        >
-          Export to Excel
-        </Button>
-      </Box>
+      {/* Selected Columns Info */}
+      {sortedData.length > 0 && (
+        <Paper elevation={1} sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Visible Columns: {visibleColumns.map(col => col.label).join(', ')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Total Records: {sortedData.length} | 
+            {fromRegNo || toRegNo ? ` Reg No Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'} |` : ''}
+            {filters.startDate ? ` Start Date: ${filters.startDate} |` : ''}
+            {filters.endDate ? ` End Date: ${filters.endDate} |` : ''}
+            {filters.brand ? ` Brand: ${filters.brand} |` : ''}
+            {filters.dealerView ? ` Dealer: ${filters.dealerView}` : ''}
+          </Typography>
+        </Paper>
+      )}
 
       {/* Report Table */}
       {sortedData.length > 0 && (
@@ -289,7 +839,7 @@ const ReportGenerator = () => {
               size="small" 
               sx={{ 
                 tableLayout: 'auto', 
-                minWidth: 1600, 
+                minWidth: visibleColumns.length * 150,
                 border: '1px solid',
                 borderColor: 'divider',
                 '& .MuiTableCell-root': {
@@ -301,22 +851,19 @@ const ReportGenerator = () => {
             >
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>S.No</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Reg No</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Received Date</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Claim No</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Dealer</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Dealer Code</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Brand</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Size</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Size Code</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Serial No</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observation No</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observation Date</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Remaining Tread Depth</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Technical Observation</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Status</TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Consultant</TableCell>
+                  {visibleColumns.map((column) => (
+                    <TableCell 
+                      key={column.key}
+                      sx={{ 
+                        whiteSpace: 'nowrap', 
+                        fontWeight: 'bold', 
+                        backgroundColor: '#f5f5f5',
+                        minWidth: column.width
+                      }}
+                    >
+                      {column.label}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -325,37 +872,38 @@ const ReportGenerator = () => {
                   : sortedData
                 ).map((item, index) => (
                   <TableRow key={item.id} sx={{ height: 50 }}>
-                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                    <TableCell>{item.id}</TableCell>
-                    <TableCell>
-                      {item.receivedDate
-                        ? format(new Date(item.receivedDate), 'dd/MM/yyyy')
-                        : 'N/A'}
-                    </TableCell>
-                    <TableCell>{item.claimNo}</TableCell>
-                    <TableCell>{item.dealerView || item.dealerName}</TableCell>
-                    <TableCell>{item.dealerCode}</TableCell>
-                    <TableCell>{item.brand}</TableCell>
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell>{item.sizeCode}</TableCell>
-                    <TableCell>{item.serialNo}</TableCell>
-                    <TableCell>{item.obsNo || 'N/A'}</TableCell>
-                    <TableCell>
-                      {item.obsDate
-                        ? format(new Date(item.obsDate), 'dd/MM/yyyy')
-                        : 'N/A'}
-                    </TableCell>
-                    <TableCell>{item.treadDepth}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                      {item.techObs}
-                    </TableCell>
-                    <TableCell>{item.obsStatus}</TableCell>
-                    <TableCell>{item.consultantName || 'N/A'}</TableCell>
+                    {visibleColumns.map((column) => {
+                      let cellContent = '';
+                      
+                      if (column.key === 'sNo') {
+                        cellContent = page * rowsPerPage + index + 1;
+                      } else if (column.key === 'receivedDate' || column.key === 'obsDate') {
+                        cellContent = item[column.key] ? format(new Date(item[column.key]), 'dd/MM/yyyy') : 'N/A';
+                      } else if (column.key === 'dealer') {
+                        cellContent = item.dealerName || item.dealerCode || 'N/A';
+                      } else if (column.key === 'techObs') {
+                        cellContent = item[column.key] || 'N/A';
+                      } else {
+                        cellContent = item[column.key] || 'N/A';
+                      }
+                      
+                      return (
+                        <TableCell 
+                          key={column.key}
+                          sx={{ 
+                            whiteSpace: column.key === 'techObs' ? 'normal' : 'nowrap',
+                            wordBreak: column.key === 'techObs' ? 'break-word' : 'normal'
+                          }}
+                        >
+                          {cellContent}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))}
                 {emptyRows > 0 && (
                   <TableRow style={{ height: 53 * emptyRows }}>
-                    <TableCell colSpan={17} />
+                    <TableCell colSpan={visibleColumns.length} />
                   </TableRow>
                 )}
               </TableBody>
@@ -372,7 +920,7 @@ const ReportGenerator = () => {
           />
         </Paper>
       )}
-    </Paper>
+    </Box>
   );
 };
 
