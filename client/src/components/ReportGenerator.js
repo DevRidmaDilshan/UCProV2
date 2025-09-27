@@ -16,8 +16,6 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Card,
-  CardContent,
   Checkbox,
   FormControlLabel,
   Menu,
@@ -39,13 +37,13 @@ const ReportGenerator = () => {
     brand: '',
     obsStatus: '',
     consultant: '',
-    dealerView: ''
+    dealer: '' // Changed from dealerView to dealer
   });
 
   const [fromRegNo, setFromRegNo] = useState('');
   const [toRegNo, setToRegNo] = useState('');
   const [selectedColumns, setSelectedColumns] = useState({
-    sNo: true, // Always include S.No
+    sNo: true,
     regNo: true,
     receivedDate: true,
     claimNo: true,
@@ -69,7 +67,6 @@ const ReportGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [consultants, setConsultants] = useState([]);
-  const [dealerViews, setDealerViews] = useState([]);
   const [allDealers, setAllDealers] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -95,26 +92,26 @@ const ReportGenerator = () => {
         const registersRes = await getAllRegisters();
         const registers = registersRes.data || [];
         
-        // Extract unique dealers
-        const uniqueDealers = [];
-        const dealerMap = new Map();
+        // Extract unique dealers from dealerName and dealerView
+        const uniqueDealers = new Set();
+        const dealerOptions = [];
+        
+        // Add "All Dealers" option first
+        dealerOptions.push('All Dealers');
         
         registers.forEach(register => {
-          if (register.dealerName && register.dealerCode && !dealerMap.has(register.dealerCode)) {
-            dealerMap.set(register.dealerCode, true);
-            uniqueDealers.push({
-              dealerName: register.dealerName,
-              dealerCode: register.dealerCode,
-              dealerView: register.dealerView
-            });
+          if (register.dealerName && !uniqueDealers.has(register.dealerName)) {
+            uniqueDealers.add(register.dealerName);
+            dealerOptions.push(register.dealerName);
+          }
+          if (register.dealerView && !uniqueDealers.has(register.dealerView)) {
+            uniqueDealers.add(register.dealerView);
+            dealerOptions.push(register.dealerView);
           }
         });
         
-        setAllDealers(uniqueDealers);
+        setAllDealers(dealerOptions);
 
-        if (data.dealerViews) {
-          setDealerViews(data.dealerViews);
-        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -126,6 +123,13 @@ const ReportGenerator = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDealerChange = (event, newValue) => {
+    setFilters(prev => ({
+      ...prev,
+      dealer: newValue === 'All Dealers' ? '' : newValue
+    }));
   };
 
   const handleColumnToggle = (column) => {
@@ -147,19 +151,30 @@ const ReportGenerator = () => {
     });
   };
 
+  const applyDealerFilter = (data) => {
+    if (!filters.dealer) return data;
+    
+    return data.filter(register => {
+      return register.dealerName === filters.dealer || register.dealerView === filters.dealer;
+    });
+  };
+
   const handleGenerateReport = async () => {
     setLoading(true);
     try {
       let filteredData = [];
 
       // If any filter is applied, use generateReport API, otherwise use getAllRegisters
-      if (filters.startDate || filters.endDate || filters.brand || filters.consultant || filters.dealerView || filters.obsStatus) {
+      if (filters.startDate || filters.endDate || filters.brand || filters.consultant || filters.obsStatus) {
         const serverFiltered = await generateReport(filters);
         filteredData = serverFiltered.data || [];
       } else {
         const { data } = await getAllRegisters();
         filteredData = data || [];
       }
+
+      // Apply dealer filter (client-side)
+      filteredData = applyDealerFilter(filteredData);
 
       // Apply Reg No range filter
       filteredData = getFilteredRegistersByRange(filteredData);
@@ -194,10 +209,11 @@ const ReportGenerator = () => {
     }
 
     const filteredByRange = getFilteredRegistersByRange(reportData);
+    const filteredByDealer = applyDealerFilter(filteredByRange);
     
     // Create printable content
     const columns = [];
-    const headers = ['S.No']; // Always include S.No as first column
+    const headers = ['S.No'];
 
     // Add selected columns
     if (selectedColumns.regNo) {
@@ -261,8 +277,8 @@ const ReportGenerator = () => {
       headers.push('Status');
     }
 
-    const tableRows = filteredByRange.map((register, index) => {
-      const rowData = [index + 1]; // Start with S.No
+    const tableRows = filteredByDealer.map((register, index) => {
+      const rowData = [index + 1];
       
       columns.forEach(col => {
         if (col === 'receivedDate' || col === 'obsDate') {
@@ -306,7 +322,7 @@ const ReportGenerator = () => {
             ${filters.startDate ? `<p>Start Date: ${filters.startDate}</p>` : ''}
             ${filters.endDate ? `<p>End Date: ${filters.endDate}</p>` : ''}
             ${filters.brand ? `<p>Brand: ${filters.brand}</p>` : ''}
-            ${filters.dealerView ? `<p>Dealer: ${filters.dealerView}</p>` : ''}
+            ${filters.dealer ? `<p>Dealer: ${filters.dealer}</p>` : ''}
           </div>
         </div>
         <table>
@@ -340,6 +356,7 @@ const ReportGenerator = () => {
     }
 
     const filteredByRange = getFilteredRegistersByRange(reportData);
+    const filteredByDealer = applyDealerFilter(filteredByRange);
 
     // Create PDF with landscape orientation
     const doc = new jsPDF({
@@ -373,14 +390,14 @@ const ReportGenerator = () => {
       doc.text(`Brand: ${filters.brand}`, 14, yOffset);
       yOffset += 6;
     }
-    if (filters.dealerView) {
-      doc.text(`Dealer: ${filters.dealerView}`, 14, yOffset);
+    if (filters.dealer) {
+      doc.text(`Dealer: ${filters.dealer}`, 14, yOffset);
       yOffset += 6;
     }
 
     // Prepare table data
     const columns = [];
-    const headers = ['S.No']; // Always include S.No as first column
+    const headers = ['S.No'];
 
     // Add selected columns
     if (selectedColumns.regNo) {
@@ -444,8 +461,8 @@ const ReportGenerator = () => {
       headers.push('Status');
     }
 
-    const tableData = filteredByRange.map((register, index) => {
-      const rowData = [index + 1]; // Start with S.No
+    const tableData = filteredByDealer.map((register, index) => {
+      const rowData = [index + 1];
       
       columns.forEach(col => {
         if (col === 'receivedDate' || col === 'obsDate') {
@@ -487,7 +504,7 @@ const ReportGenerator = () => {
     });
 
     // Save PDF
-    doc.save(`tyre-register-report-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
+    doc.save(`UC-Tyre-register-report-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
   };
 
   const handleExportExcel = () => {
@@ -497,9 +514,10 @@ const ReportGenerator = () => {
     }
 
     const filteredByRange = getFilteredRegistersByRange(reportData);
+    const filteredByDealer = applyDealerFilter(filteredByRange);
 
     // Define worksheet data with S.No column as first column
-    const worksheetData = filteredByRange.map((item, index) => {
+    const worksheetData = filteredByDealer.map((item, index) => {
       const rowData = {
         'S.No': index + 1
       };
@@ -592,108 +610,95 @@ const ReportGenerator = () => {
 
       {/* Filters Section */}
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        {/* First Line: Start Date, End Date, Brand, Consultant, Observation Status, Dealer View */}
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6} md={2}>
-            <TextField
-              label="Start Date"
-              type="date"
-              name="startDate"
-              value={filters.startDate}
+        {/* First Line: Start Date, End Date, Brand, Consultant, Observation Status, Dealer */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: 2, 
+          mb: 2,
+          '& > *': { 
+            minWidth: 200,
+            flex: '1 1 200px'
+          }
+        }}>
+          <TextField
+            label="Start Date"
+            type="date"
+            name="startDate"
+            value={filters.startDate}
+            onChange={handleFilterChange}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 200 }}
+          />
+          
+          <TextField
+            label="End Date"
+            type="date"
+            name="endDate"
+            value={filters.endDate}
+            onChange={handleFilterChange}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 200 }}
+          />
+          
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Brand</InputLabel>
+            <Select
+              name="brand"
+              value={filters.brand}
+              label="Brand"
               onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <TextField
-              label="End Date"
-              type="date"
-              name="endDate"
-              value={filters.endDate}
+            >
+              <MenuItem value="">All Brands</MenuItem>
+              {brands.map((brand) => (
+                <MenuItem key={brand} value={brand}>{brand}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Consultant</InputLabel>
+            <Select
+              name="consultant"
+              value={filters.consultant}
+              label="Consultant"
               onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Brand</InputLabel>
-              <Select
-                name="brand"
-                value={filters.brand}
-                label="Brand"
-                onChange={handleFilterChange}
-              >
-                <MenuItem value="">All Brands</MenuItem>
-                {brands.map((brand) => (
-                  <MenuItem key={brand} value={brand}>
-                    {brand}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Consultant</InputLabel>
-              <Select
-                name="consultant"
-                value={filters.consultant}
-                label="Consultant"
-                onChange={handleFilterChange}
-              >
-                <MenuItem value="">All Consultants</MenuItem>
-                {consultants.map((consultant) => (
-                  <MenuItem
-                    key={consultant.consultantName}
-                    value={consultant.consultantName}
-                  >
-                    {consultant.consultantName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Observation Status</InputLabel>
-              <Select
-                name="obsStatus"
-                value={filters.obsStatus}
-                label="Observation Status"
-                onChange={handleFilterChange}
-              >
-                {observationStatusOptions.map((status) => (
-                  <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
-                    {status}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <Autocomplete
-              options={[{ dealerName: 'All Dealers', dealerCode: '' }, ...allDealers]}
-              getOptionLabel={(option) => option.dealerName || 'All Dealers'}
-              value={
-                allDealers.find((dealer) => dealer.dealerName === filters.dealerView) ||
-                { dealerName: 'All Dealers', dealerCode: '' }
-              }
-              onChange={(e, newValue) => {
-                setFilters((prev) => ({
-                  ...prev,
-                  dealerView: newValue ? newValue.dealerName : ''
-                }));
-              }}
-              isOptionEqualToValue={(option, value) => option.dealerName === value.dealerName}
-              renderInput={(params) => (
-                <TextField {...params} label="Dealer" fullWidth />
-              )}
-              fullWidth
-            />
-          </Grid>
-        </Grid>
+            >
+              <MenuItem value="">All Consultants</MenuItem>
+              {consultants.map((consultant) => (
+                <MenuItem key={consultant.consultantName} value={consultant.consultantName}>
+                  {consultant.consultantName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Observation Status</InputLabel>
+            <Select
+              name="obsStatus"
+              value={filters.obsStatus}
+              label="Observation Status"
+              onChange={handleFilterChange}
+            >
+              {observationStatusOptions.map((status) => (
+                <MenuItem key={status} value={status === 'All Observations Status' ? '' : status}>
+                  {status}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <Autocomplete
+            options={allDealers}
+            value={filters.dealer || null}
+            onChange={handleDealerChange}
+            renderInput={(params) => (
+              <TextField {...params} label="Dealer" />
+            )}
+            sx={{ minWidth: 200 }}
+          />
+        </Box>
 
         {/* Second Line: From Reg No, To Reg No, Select Columns */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -749,7 +754,7 @@ const ReportGenerator = () => {
                       <Checkbox
                         checked={selectedColumns[column]}
                         onChange={() => handleColumnToggle(column)}
-                        disabled={column === 'sNo'} // S.No cannot be disabled
+                        disabled={column === 'sNo'}
                       />
                     }
                     label={column.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
@@ -816,16 +821,18 @@ const ReportGenerator = () => {
       {/* Selected Columns Info */}
       {sortedData.length > 0 && (
         <Paper elevation={1} sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+          {/* <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
             Visible Columns: {visibleColumns.map(col => col.label).join(', ')}
-          </Typography>
+          </Typography> */}
           <Typography variant="body2" color="text.secondary">
             Total Records: {sortedData.length} | 
-            {fromRegNo || toRegNo ? ` Reg No Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'} |` : ''}
+            {fromRegNo || toRegNo ? ` Reg No Range: ${fromRegNo || 'Start'} - ${toRegNo || 'End'} |` : ''} 
             {filters.startDate ? ` Start Date: ${filters.startDate} |` : ''}
             {filters.endDate ? ` End Date: ${filters.endDate} |` : ''}
-            {filters.brand ? ` Brand: ${filters.brand} |` : ''}
-            {filters.dealerView ? ` Dealer: ${filters.dealerView}` : ''}
+            {filters.brand ? ` Brand: ${filters.brand} |` : '| All Brands |'}
+            {filters.dealer ? ` Dealer: ${filters.dealer} |` : '| All Dealers |'}
+            {filters.consultant ? ` Consultant: ${filters.consultant} |` : '| All Consultants |'}
+            {filters.obsStatus ? ` Observation Status: ${filters.obsStatus} |` : '| All Observation Status |'}
           </Typography>
         </Paper>
       )}
@@ -880,7 +887,7 @@ const ReportGenerator = () => {
                       } else if (column.key === 'receivedDate' || column.key === 'obsDate') {
                         cellContent = item[column.key] ? format(new Date(item[column.key]), 'dd/MM/yyyy') : 'N/A';
                       } else if (column.key === 'dealer') {
-                        cellContent = item.dealerName || item.dealerCode || 'N/A';
+                        cellContent = item.dealerName || item.dealerView || item.dealerCode || 'N/A';
                       } else if (column.key === 'techObs') {
                         cellContent = item[column.key] || 'N/A';
                       } else {
