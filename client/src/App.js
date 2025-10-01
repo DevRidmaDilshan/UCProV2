@@ -16,7 +16,7 @@ import RegisterList from './components/RegisterList';
 import Dashboard from './components/Dashboard';
 import DailyReport from './components/DailyReport';
 import ReportGenerator from './components/ReportGenerator';
-import RecheckNote from './components/RecheckNote';
+import RecheckList from './components/RecheckList';
 
 // Create a custom theme
 const theme = createTheme({
@@ -85,7 +85,7 @@ function App() {
     { label: 'Brand Summary', component: <Dashboard /> },
     { label: 'Observation Summary', component: <DailyReport /> },
     { label: 'Reports', component: <ReportGenerator /> },
-    { label: 'Recheck Note', component: <RecheckNote /> },
+    { label: 'Recheck Note', component: <RecheckList /> },
   ];
 
   return (

@@ -31,7 +31,7 @@ api.interceptors.response.use(
 
 export const createRegister = (data) => api.post('/', data);
 export const getAllRegisters = () => api.get('/');
-export const getRegisterById = (id) => api.get(`/${id}`);
+// export const getRegisterById = (id) => api.get(`/${id}`);
 export const updateRegister = (id, data) => api.put(`/${id}`, data);
 export const deleteRegister = (id) => api.delete(`/${id}`);
 export const getInitialData = () => api.get('/initial-data');
@@ -47,31 +47,42 @@ export const getDailyReportData = () => api.get('/dailyReport');
 export const getAllObservations = () => {
   return axios.get(`${API_BASE_URL}/observations`); // This should match the mounted route
 };
-// Recheck API functions
-export const getAllRechecks = () => {
-  return axios.get('/api/rechecks');
-};
+// Get all registers for dropdown
+// export const getAllRegistersForDropdown = () => {
+//   return axios.get('/api/registers/dropdown');
+// };
 
-export const getRecheckById = (recheckNo) => {
-  return axios.get(`/api/rechecks/${recheckNo}`);
-};
+// Get register by ID
+// export const getRegisterById = (id) => {
+//   return axios.get(`/api/registers/${id}`);
+// };
 
+// Recheck APIs
 export const createRecheck = (recheckData) => {
   return axios.post('/api/rechecks', recheckData);
 };
 
-export const updateRecheck = (recheckNo, recheckData) => {
-  return axios.put(`/api/rechecks/${recheckNo}`, recheckData);
+export const getAllRechecks = () => {
+  return axios.get('/api/rechecks');
 };
 
-export const deleteRecheck = (recheckNo) => {
-  return axios.delete(`/api/rechecks/${recheckNo}`);
+export const getNextRecheckNumber = () => {
+  return axios.get('/api/rechecks/next-number');
 };
 
-export const getRegisterForRecheck = (id) => {
-  return axios.get(`/api/rechecks/register/${id}`);
+export const updateRecheck = (reNo, recheckData) => {
+  return axios.put(`/api/rechecks/${reNo}`, recheckData);
 };
 
-export const getRegistersWithObservations = () => {
-  return axios.get('/api/rechecks/registers/with-observations');
+export const deleteRecheck = (reNo) => {
+  return axios.delete(`/api/rechecks/${reNo}`);
+};
+
+// Add to your services/api.js
+export const getAllRegistersForDropdown = () => {
+  return axios.get('/api/registers/dropdown/registers');
+};
+
+export const getRegisterById = (id) => {
+  return axios.get(`/api/registers/${id}`);
 };

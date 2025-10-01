@@ -10,7 +10,8 @@ const dashboardRoutes = require('./routes/dashboard');       // <-- FIXED
 const dailyReportRoutes = require('./routes/dailyReport'); 
 const observationRoutes = require('./routes/observations');
 // Add this with other route imports
-const recheckRoutes = require('./routes/recheck.routes');
+const recheckRoutes = require('./routes/recheckRoutes');
+
 
 const app = express();
 

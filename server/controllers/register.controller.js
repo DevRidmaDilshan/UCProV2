@@ -455,3 +455,34 @@ exports.generateBrandReport = async (req, res) => {
     });
   }
 };
+
+// Add this to your register.controller.js
+exports.getRegistersForDropdown = async (req, res) => {
+  try {
+    const query = `
+      SELECT id, claimNo, dealerView, brand, size, serialNo 
+      FROM registers 
+      ORDER BY id DESC
+    `;
+    
+    const [registers] = await db.query(query);
+    
+    // Transform the data for the dropdown
+    const dropdownData = registers.map(register => ({
+      id: register.id,
+      claimNo: register.claimNo || 'N/A',
+      dealerView: register.dealerView || 'N/A',
+      brand: register.brand || 'N/A',
+      size: register.size || 'N/A',
+      serialNo: register.serialNo || 'N/A'
+    }));
+    
+    res.json(dropdownData);
+  } catch (error) {
+    console.error('Error fetching registers for dropdown:', error);
+    res.status(500).json({ 
+      message: 'Error fetching registers for dropdown',
+      error: error.message 
+    });
+  }
+};

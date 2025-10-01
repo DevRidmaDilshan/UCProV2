@@ -37,4 +37,6 @@ router.get('/dailyReport', registerController.getDailyReportData);
 // Add this to your routes
 router.post('/brand-report', registerController.generateBrandReport);
 
+router.get('/dropdown/registers', registerController.getRegistersForDropdown);
+
 module.exports = router;
