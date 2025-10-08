@@ -75,16 +75,33 @@ const RegisterList = () => {
       return <Chip label="Pending" color="warning" size="small" />;
     }
     
-    switch(register.obsStatus) {
+    switch (register.obsStatus) {
       case 'Recommended':
         return <Chip label="Recommended" color="success" size="small" />;
       case 'Not Recommended':
         return <Chip label="Not Recommended" color="error" size="small" />;
       case 'Forwarded for Management Decision':
         return <Chip label="Management Decision" color="info" size="small" />;
+      case 'Return to Dealer':
+        return (
+          <Chip
+            label="Return to Dealer"
+            size="small"
+            sx={{ backgroundColor: '#ff9800', color: '#fff' }} // Orange
+          />
+        );
+      case 'Sent to CEAT':
+        return (
+          <Chip
+            label="Sent to CEAT"
+            size="small"
+            sx={{ backgroundColor: '#9c27b0', color: '#fff' }} // Purple
+          />
+        );
       default:
         return <Chip label="Unknown" size="small" />;
     }
+
   };
 
   const handleChangePage = (event, newPage) => {
@@ -361,6 +378,7 @@ const RegisterList = () => {
         (register.dealerCode ?? '').toLowerCase().includes(search) ||
         (register.serialNo ?? '').toLowerCase().includes(search) ||
         (register.obsNo ?? '').toLowerCase().includes(search) ||
+        (register.obsStatus ?? '').toLowerCase().includes(search) ||
         (register.dealerName ?? '').toLowerCase().includes(search)
       ) : true)
     );

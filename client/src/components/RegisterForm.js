@@ -513,6 +513,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                     <MenuItem value="Forwarded for Management Decision">
                       Forwarded for Management Decision
                     </MenuItem>
+                    <MenuItem value="Return to Dealer">Return to Dealer</MenuItem>
+                    <MenuItem value="Sent to CEAT">Sent to CEAT</MenuItem>
                   </Select>
                 </FormControl>
               </Box>

@@ -100,6 +100,7 @@ const RecheckList = () => {
       (recheck.register?.claimNo?.toLowerCase().includes(search)) ||
       (recheck.register?.dealerView?.toLowerCase().includes(search)) ||
       (recheck.reObsStatus?.toLowerCase().includes(search))
+      
     );
   });
 

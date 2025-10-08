@@ -76,7 +76,9 @@ const ReportGenerator = () => {
     'Pending',
     'Recommended',
     'Not Recommended',
-    'Forwarded for Management Decision'
+    'Forwarded for Management Decision',
+    'Return to Dealer',
+    'Sent to CEAT'
   ];
 
   useEffect(() => {
