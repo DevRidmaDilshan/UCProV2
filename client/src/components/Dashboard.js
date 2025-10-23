@@ -260,37 +260,25 @@ const Dashboard = () => {
 
   // ✅ Fixed: Download Flow Chart as PDF using html2canvas
   const downloadFlowChartAsPDF = async () => {
-    if (!chartRef.current || !data.length) {
-      alert('No chart data available to download');
-      return;
-    }
-
-    try {
-      const canvas = await html2canvas(chartRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      
-      const imgWidth = pageWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      doc.setFontSize(16);
-      doc.text(`Tyre Analysis Flow Chart (${startDate} to ${endDate})`, 105, 15, { align: 'center' });
-      
-      doc.addImage(imgData, 'PNG', 10, 25, imgWidth, imgHeight);
-      
-      doc.save(`tyre_flow_chart_${startDate}_to_${endDate}.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    }
+    if (!chartRef.current) return;
+    
+    const canvas = await html2canvas(chartRef.current, {
+      scale: 2, // Increase quality
+      useCORS: true,
+      allowTaint: true,
+      scrollY: -window.scrollY, // Capture full content
+      width: chartRef.current.scrollWidth,
+      height: chartRef.current.scrollHeight
+    });
+    
+    const imgData = canvas.toDataURL('image/png');
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const imgHeight = (canvas.height * pageWidth) / canvas.width;
+    
+    // Add image and save
+    doc.addImage(imgData, 'PNG', 0, 0, pageWidth, imgHeight);
+    doc.save(`flow_chart_${startDate}_to_${endDate}.pdf`);
   };
 
   // Flow Chart Component with corrected category organization
@@ -767,7 +755,10 @@ const Dashboard = () => {
 
       {/* ✅ Fixed: Flow Chart Section with ref attached */}
       {showChart && data.length > 0 && (
-        <Paper sx={{ p: 2, mt: 3 }} ref={chartRef}>
+        <Paper 
+          sx={{ p: 2, mt: 3, width: 'fit-content', minWidth: '100%' }} 
+          ref={chartRef}
+        >
           <FlowChart />
         </Paper>
       )}
