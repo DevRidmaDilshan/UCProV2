@@ -14,10 +14,5 @@ db.sequelize = sequelize;
 
 // Import model definitions
 db.registers = require('./register.model')(sequelize, Sequelize.DataTypes);
-db.rechecks = require('./recheck.model')(sequelize, Sequelize.DataTypes);
-
-// Define associations between models
-db.registers.hasMany(db.rechecks, { foreignKey: 'id', sourceKey: 'id' });
-db.rechecks.belongsTo(db.registers, { foreignKey: 'id', targetKey: 'id' });
 
 module.exports = db;

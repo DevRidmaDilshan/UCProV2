@@ -8,7 +8,6 @@ const registerRoutes = require('./routes/register.routes');
 const dashboardRoutes = require('./routes/dashboard');
 const dailyReportRoutes = require('./routes/dailyReport'); 
 const observationRoutes = require('./routes/observations');
-const recheckRoutes = require('./routes/recheckRoutes');
 
 const app = express();
 
@@ -50,7 +49,6 @@ app.use('/api/registers', registerRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/dailyReport', dailyReportRoutes);
 app.use('/api/observations', observationRoutes);
-app.use('/api/rechecks', recheckRoutes);
 
 // ✅ FIXED: /api/sizes route with proper database connection
 app.get('/api/sizes', async (req, res) => {

@@ -57,26 +57,6 @@ export const getAllObservations = () => {
 //   return axios.get(`/api/registers/${id}`);
 // };
 
-// Recheck APIs
-export const createRecheck = (recheckData) => {
-  return axios.post('/api/rechecks', recheckData);
-};
-
-export const getAllRechecks = () => {
-  return axios.get('/api/rechecks');
-};
-
-export const getNextRecheckNumber = () => {
-  return axios.get('/api/rechecks/next-number');
-};
-
-export const updateRecheck = (reNo, recheckData) => {
-  return axios.put(`/api/rechecks/${reNo}`, recheckData);
-};
-
-export const deleteRecheck = (reNo) => {
-  return axios.delete(`/api/rechecks/${reNo}`);
-};
 
 // Add to your services/api.js
 export const getAllRegistersForDropdown = () => {
