@@ -1,3 +1,4 @@
+// RegisterForm.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   TextField, 
@@ -33,6 +34,9 @@ import {
   getNextObservationNumber,
   getAllObservations
 } from '../services/api';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode = false }) => {
   const [formData, setFormData] = useState({
@@ -49,7 +53,9 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     treadDepth: '',
     consultantName: '',
     obsNo: '',
-    obsStatus: 'Pending'
+    obsStatus: 'Pending',
+    locationName: '',
+    stackName: ''
   });
 
   const [dealerViews, setDealerViews] = useState([]);
@@ -67,7 +73,10 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   const [message, setMessage] = useState('');
   const [hasParsedInitialData, setHasParsedInitialData] = useState(false);
 
-  // Format date safely
+  // Locations and stacks state
+  const [locations, setLocations] = useState([]);
+  const [stacks, setStacks] = useState([]);
+
   const formatDateForInput = (dateString) => {
     if (!dateString) return format(new Date(), 'yyyy-MM-dd');
     try {
@@ -78,7 +87,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   };
 
-  // Parse techObs into selections - using useCallback to fix ESLint warning
   const parseTechnicalObservations = useCallback((techObsText) => {
     if (!techObsText) return;
 
@@ -98,7 +106,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         return;
       }
 
-      // strip numbering if exists
       const numberedMatch = trimmed.match(/^\d+\)\s+(.+)$/);
       const observationText = numberedMatch ? numberedMatch[1] : trimmed;
 
@@ -126,7 +133,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     setNoManufacturingDefect(noDefect);
   }, [observations]);
 
-  // Load initial + observations
+  // Load all initial data including locations & stacks
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -135,10 +142,18 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         setBrands(data.brands);
 
         const consultantsRes = await getAllConsultants();
-        setConsultants(consultantsRes.data);
+        setConsultants(consultantsRes.data || []);
 
         const observationsRes = await getAllObservations();
-        setObservations(observationsRes.data);
+        setObservations(observationsRes.data || []);
+
+        // ✅ Corrected endpoints
+        const [locationsRes, stacksRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/registers/locations/all`),
+          axios.get(`${API_BASE_URL}/registers/stacks/all`)
+        ]);
+        setLocations(locationsRes.data);
+        setStacks(stacksRes.data);
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -146,7 +161,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     fetchInitialData();
   }, []);
 
-  // Populate formData from initialData
+  // Populate form when editing
   useEffect(() => {
     if (initialData && !hasParsedInitialData) {
       let obsStatus = 'Pending';
@@ -161,14 +176,15 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         ...initialData,
         receivedDate: formatDateForInput(initialData.receivedDate),
         obsDate: formatDateForInput(initialData.obsDate),
-        obsStatus
+        obsStatus,
+        locationName: initialData.locationName || '',
+        stackName: initialData.stackName || ''
       }));
 
       if (initialData.brand) {
         getSizesByBrand(initialData.brand).then(({ data }) => {
           setSizes(data.map(s => s.size));
           setSizeOptions(data);
-
           const selectedSize = data.find(s => s.sizeCode === initialData.sizeCode);
           if (selectedSize) {
             setFormData(prev => ({
@@ -213,7 +229,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   }, [formData.brand]);
 
-  // Update techObs string
   useEffect(() => {
     let text = '';
     selectedObservations.forEach((obs, i) => {
@@ -244,11 +259,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
   const handleStatusChange = async (e) => {
     const { value } = e.target;
-    
-    // Update the status immediately
     setFormData(prev => ({ ...prev, obsStatus: value }));
 
-    // Generate observation number for both create and edit modes when status changes to non-Pending
     if (value !== 'Pending') {
       try {
         let type = '';
@@ -258,8 +270,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           case 'Forwarded for Management Decision': type = 'SCN'; break;
           default: return;
         }
-        
-        // Only generate new number if we don't already have one for this status type
         const currentObsNo = formData.obsNo;
         if (!currentObsNo || !currentObsNo.startsWith(type)) {
           const { data } = await getNextObservationNumber(type);
@@ -269,7 +279,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         console.error('Error generating observation number:', err);
       }
     } else {
-      // If status is set to Pending, clear the observation number
       setFormData(prev => ({ ...prev, obsNo: '' }));
     }
   };
@@ -326,13 +335,13 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           size: formData.size,
           sizeCode: formData.sizeCode,
           serialNo: formData.serialNo,
+          locationName: formData.locationName,
+          stackName: formData.stackName
         };
-
         const registerId = await createRegister(basicData);
         setMessage('Basic information saved successfully! Registration No: ' + registerId);
         setTimeout(() => onSuccess(), 2000);
       } else {
-        // For edit mode, send all form data including the obsNo
         await updateRegister(initialData.id, formData);
         setMessage('Registration updated successfully!');
         setTimeout(() => onSuccess(), 2000);
@@ -358,11 +367,10 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Basic Info */}
+        {/* Basic Info Card */}
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6">Basic Information</Typography>
-            {/* Row 1: Received Date + Claim No */}
             <Box display="flex" gap={2} mb={2}>
               <TextField
                 fullWidth
@@ -384,7 +392,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               />
             </Box>
 
-            {/* Row 2: Dealer View + Dealer Code */}
             <Box display="flex" gap={2} mb={2}>
               <Autocomplete
                 options={dealerViews}
@@ -406,7 +413,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               />
             </Box>
 
-            {/* Row 3: Brand + Size */}
             <Box display="flex" gap={2} mb={2}>
               <FormControl sx={{ flex: 1 }}>
                 <InputLabel>Brand</InputLabel>
@@ -437,7 +443,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               />
             </Box>
 
-            {/* Row 4: Size Code + Serial No */}
             <Box display="flex" gap={2}>
               <TextField
                 fullWidth
@@ -460,6 +465,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           </CardContent>
         </Card>
 
+        {/* Technical Details Card */}
         {(mode === 'edit' || technicalMode) && (
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
@@ -490,9 +496,11 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   <InputLabel>Consultant Name</InputLabel>
                   <Select 
                     name="consultantName" 
-                    value={formData.consultantName} 
+                    value={formData.consultantName || ''}  // Fallback to empty string
+                    label="Consultant Name"
                     onChange={handleChange}
                   >
+                    <MenuItem value="">None</MenuItem>
                     {consultants.map(c => (
                       <MenuItem key={c.consultantName} value={c.consultantName}>
                         {c.consultantName}
@@ -505,6 +513,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   <Select 
                     name="obsStatus" 
                     value={formData.obsStatus} 
+                    label="Observation Status"
                     onChange={handleStatusChange}
                   >
                     <MenuItem value="Pending">Pending</MenuItem>
@@ -536,20 +545,14 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   options={observations}
                   getOptionLabel={(option) => `${option.obId} - ${option.observation}`}
                   value={currentObservation}
-                  onChange={(event, newValue) => {
-                    setCurrentObservation(newValue);
-                  }}
+                  onChange={(event, newValue) => setCurrentObservation(newValue)}
                   isOptionEqualToValue={(option, value) => option.obId === value?.obId}
                   renderInput={(params) => (
                     <TextField {...params} label="Select Observation" />
                   )}
                   sx={{ flex: 1 }}
                 />
-                <IconButton 
-                  onClick={addObservation} 
-                  disabled={!currentObservation}
-                  color="primary"
-                >
+                <IconButton onClick={addObservation} disabled={!currentObservation} color="primary">
                   <AddIcon />
                 </IconButton>
               </Box>
@@ -560,10 +563,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                     <ListItem key={obs.id}>
                       <ListItemText primary={`${i + 1}) ${obs.observation}`} />
                       <ListItemSecondaryAction>
-                        <IconButton 
-                          onClick={() => removeObservation(obs.id)}
-                          color="error"
-                        >
+                        <IconButton onClick={() => removeObservation(obs.id)} color="error">
                           <DeleteIcon />
                         </IconButton>
                       </ListItemSecondaryAction>
@@ -581,11 +581,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   multiline 
                   rows={2}
                 />
-                <IconButton 
-                  onClick={addCustomObservation} 
-                  disabled={!customObservation.trim()}
-                  color="primary"
-                >
+                <IconButton onClick={addCustomObservation} disabled={!customObservation.trim()} color="primary">
                   <AddIcon />
                 </IconButton>
               </Box>
@@ -619,6 +615,52 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                 value={formData.techObs} 
                 InputProps={{ style: { whiteSpace: 'pre-line' } }} 
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Location & Stack Card */}
+        {(mode === 'edit' || technicalMode) && (
+          <Card variant="outlined" sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Location & Stacking
+              </Typography>
+              <Box display="flex" gap={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Location</InputLabel>
+                  <Select
+                    name="locationName"
+                    value={formData.locationName || ''}
+                    label="Location"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {locations.map((loc) => (
+                      <MenuItem key={loc.locationID || loc.locationName} value={loc.locationName}>
+                        {loc.locationName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <InputLabel>Stack</InputLabel>
+                  <Select
+                    name="stackName"
+                    value={formData.stackName || ''}
+                    label="Stack"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {stacks.map((stk) => (
+                      <MenuItem key={stk.stackID || stk.stackName} value={stk.stackName}>
+                        {stk.stackName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
             </CardContent>
           </Card>
         )}

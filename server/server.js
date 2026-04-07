@@ -95,6 +95,27 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
+// ========== LOCATIONS & STACKS ENDPOINTS ==========
+app.get('/api/locations', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT locationID, locationName FROM locations ORDER BY locationName');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
+  }
+});
+
+app.get('/api/stacks', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT stackID, stackName FROM stacks ORDER BY stackName');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching stacks:', error);
+    res.status(500).json({ error: 'Failed to fetch stacks' });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

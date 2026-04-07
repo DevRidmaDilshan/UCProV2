@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const registerController = require('../controllers/register.controller');
 const consultantController = require('../controllers/consultant.controller');
+const locationController = require('../controllers/location.controller');
+const stackController = require('../controllers/stack.controller');
 
 // ------------------- Register routes -------------------
 router.post('/', registerController.createRegister);
@@ -20,6 +22,9 @@ router.get('/size-details/:size', registerController.getSizeDetails);
 
 // ------------------- Consultant routes -------------------
 router.get('/consultants/all', consultantController.getAllConsultants);
+
+router.get('/locations/all', locationController.getAllLocations);
+router.get('/stacks/all', stackController.getAllStacks);
 
 // ------------------- Observation Number routes -------------------
 router.get('/observation-numbers', registerController.getObservationNumbers);
