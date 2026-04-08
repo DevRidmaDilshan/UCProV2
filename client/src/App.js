@@ -15,6 +15,7 @@ import {
 import RegisterList from './components/RegisterList';
 import Dashboard from './components/Dashboard';
 import DailyReport from './components/DailyReport';
+import BrandReport from './components/BrandReport';
 import ReportGenerator from './components/ReportGenerator';
 
 // Create a custom theme
@@ -83,6 +84,7 @@ function App() {
     { label: 'Registration', component: <RegisterList /> },
     { label: 'Brand Summary', component: <Dashboard /> },
     { label: 'Observation Summary', component: <DailyReport /> },
+    { label: 'Brand Report', component: <BrandReport /> },
     { label: 'Reports', component: <ReportGenerator /> },
   ];
 

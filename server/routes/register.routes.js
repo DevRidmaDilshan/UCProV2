@@ -9,9 +9,6 @@ const stackController = require('../controllers/stack.controller');
 router.post('/', registerController.createRegister);
 router.get('/', registerController.getAllRegisters);
 router.get('/initial-data', registerController.getInitialData);
-router.get('/:id', registerController.getRegisterById);
-router.put('/:id', registerController.updateRegister);
-router.delete('/:id', registerController.deleteRegister);
 
 // ------------------- Dealer routes -------------------
 router.get('/dealer/:dealerView', registerController.getDealerByView);
@@ -43,5 +40,11 @@ router.get('/dailyReport', registerController.getDailyReportData);
 router.post('/brand-report', registerController.generateBrandReport);
 
 router.get('/dropdown/registers', registerController.getRegistersForDropdown);
+router.get('/brand-report', registerController.getBrandReport);
+
+router.get('/:id', registerController.getRegisterById);
+router.put('/:id', registerController.updateRegister);
+router.delete('/:id', registerController.deleteRegister);
+
 
 module.exports = router;

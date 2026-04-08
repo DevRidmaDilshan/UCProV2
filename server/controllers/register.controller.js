@@ -310,7 +310,7 @@ exports.getDashboardData = async (req, res) => {
     const [statusCounts] = await db.query(`
       SELECT 
         SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as r_count,
         SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_count,
         SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count,
         COUNT(*) as total
@@ -339,7 +339,7 @@ exports.getDashboardData = async (req, res) => {
     `);
     
     res.json({
-      statusCounts: statusCounts[0] || { pending: 0, recommended: 0, nr_count: 0, scn_count: 0, total: 0 },
+      statusCounts: statusCounts[0] || { pending: 0, r_count: 0, nr_count: 0, scn_count: 0, total: 0 },
       brandCounts: brandCounts || [],
       monthlyCounts: monthlyCounts || []
     });
@@ -358,7 +358,7 @@ exports.getDailyReportData = async (req, res) => {
     const [statusCounts] = await db.query(`
       SELECT 
         SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as r_count,
         SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_count,
         SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count,
         COUNT(*) as total
@@ -387,7 +387,7 @@ exports.getDailyReportData = async (req, res) => {
     `);
     
     res.json({
-      statusCounts: statusCounts[0] || { pending: 0, recommended: 0, nr_count: 0, scn_count: 0, total: 0 },
+      statusCounts: statusCounts[0] || { pending: 0, r_count: 0, nr_count: 0, scn_count: 0, total: 0 },
       brandCounts: brandCounts || [],
       monthlyCounts: monthlyCounts || []
     });
@@ -424,8 +424,8 @@ exports.generateBrandReport = async (req, res) => {
         brand,
         COUNT(*) as totalCount,
         SUM(CASE WHEN obsStatus IS NULL OR obsStatus = 'Pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as recommended,
-        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_ount,
+        SUM(CASE WHEN obsStatus = 'Recommended' THEN 1 ELSE 0 END) as r_count,
+        SUM(CASE WHEN obsStatus = 'Not Recommended' THEN 1 ELSE 0 END) as nr_count,
         SUM(CASE WHEN obsStatus = 'Forwarded for Management Decision' THEN 1 ELSE 0 END) as scn_count
       FROM registers
       WHERE 1=1
@@ -484,5 +484,198 @@ exports.getRegistersForDropdown = async (req, res) => {
       message: 'Error fetching registers for dropdown',
       error: error.message 
     });
+  }
+};
+
+// register.controller.js
+
+exports.getBrandReport = async (req, res) => {
+  try {
+    const { brand, startDate, endDate } = req.query;
+
+    if (!brand || !startDate || !endDate) {
+      return res.status(400).json({ error: 'Brand, startDate and endDate are required' });
+    }
+
+    // --------------------------------------------------------------
+    // 1. Fetch registers for the brand and date range
+    // --------------------------------------------------------------
+    const [registers] = await db.query(
+      `SELECT id, obsStatus, techObs, sizeCode 
+       FROM registers 
+       WHERE brand = ? AND receivedDate BETWEEN ? AND ?`,
+      [brand, startDate, endDate]
+    );
+
+    // --------------------------------------------------------------
+    // 2. Get size category mapping (sizeCode -> category)
+    // --------------------------------------------------------------
+    const [sizeRows] = await db.query(
+      `SELECT sizeCode, category FROM sizes WHERE brand = ?`,
+      [brand]
+    );
+    const sizeCategoryMap = {};
+    sizeRows.forEach(row => {
+      sizeCategoryMap[row.sizeCode] = row.category || 'Uncategorized';
+    });
+
+    // --------------------------------------------------------------
+    // 3. Get all observations for text matching
+    // --------------------------------------------------------------
+    const [observations] = await db.query(`SELECT obId, observation, obsCategory FROM observations`);
+
+    // Helper: extract the first observation text from techObs
+    const extractFirstObservationText = (techObs) => {
+      if (!techObs) return null;
+      const lines = techObs.split('\n');
+      if (lines.length === 0) return null;
+      const firstLine = lines[0].trim();
+      // Remove numbering like "1) " or "2) "
+      const withoutNumber = firstLine.replace(/^\d+\)\s*/, '');
+      return withoutNumber;
+    };
+
+    // Helper: find obsCategory by matching observation text
+    const findObsCategory = (obsText, observations) => {
+      if (!obsText) return null;
+      // Try exact match first
+      let found = observations.find(o => o.observation === obsText);
+      if (found) return found.obsCategory;
+      // Try case‑insensitive partial match (if needed)
+      found = observations.find(o => obsText.includes(o.observation) || o.observation.includes(obsText));
+      return found ? found.obsCategory : 'Uncategorized';
+    };
+
+    // --------------------------------------------------------------
+    // Data structures for Recommended breakdown
+    // --------------------------------------------------------------
+    // rData[obsCategory][sizeCategory] = count
+    const rData = new Map(); // Map<obsCategory, Map<sizeCategory, count>>
+    let nrCount = 0;
+    let scnCount = 0;
+    let pendingCount = 0;
+
+    // Process each register
+    for (const reg of registers) {
+      const status = reg.obsStatus;
+      const sizeCode = reg.sizeCode;
+      const sizeCategory = sizeCategoryMap[sizeCode] || 'Uncategorized';
+
+      if (status === 'Recommended') {
+        const obsText = extractFirstObservationText(reg.techObs);
+        const obsCategory = findObsCategory(obsText, observations) || 'Other Defects';
+
+        if (!rData.has(obsCategory)) {
+          rData.set(obsCategory, new Map());
+        }
+        const sizeMap = rData.get(obsCategory);
+        sizeMap.set(sizeCategory, (sizeMap.get(sizeCategory) || 0) + 1);
+      } 
+      else if (status === 'Not Recommended') {
+        nrCount++;
+      } 
+      else if (status === 'Forwarded for Management Decision') {
+        scnCount++;
+      } 
+      else {
+        pendingCount++;
+      }
+    }
+
+    // --------------------------------------------------------------
+    // Build hierarchical breakdown: top 2 obsCategories, then top 2 sizeCategories each
+    // --------------------------------------------------------------
+    const obsCategoriesArray = [];
+    for (const [obsCat, sizeMap] of rData.entries()) {
+      let total = 0;
+      const sizes = [];
+      for (const [sizeCat, count] of sizeMap.entries()) {
+        total += count;
+        sizes.push({ name: sizeCat, count });
+      }
+      sizes.sort((a, b) => b.count - a.count);
+      obsCategoriesArray.push({
+        obsCategory: obsCat,
+        total,
+        sizeCategories: sizes
+      });
+    }
+    // Sort by total descending
+    obsCategoriesArray.sort((a, b) => b.total - a.total);
+
+    // Take top 2 obsCategories
+    const topObs = obsCategoriesArray.slice(0, 2);
+    let othersObsTotal = 0;
+    const othersSizeMap = new Map();
+
+    for (let i = 2; i < obsCategoriesArray.length; i++) {
+      const cat = obsCategoriesArray[i];
+      othersObsTotal += cat.total;
+      for (const size of cat.sizeCategories) {
+        othersSizeMap.set(size.name, (othersSizeMap.get(size.name) || 0) + size.count);
+      }
+    }
+
+    // Build "Others" obsCategory
+    let othersSizesArray = [];
+    for (const [sizeName, count] of othersSizeMap.entries()) {
+      othersSizesArray.push({ name: sizeName, count });
+    }
+    othersSizesArray.sort((a, b) => b.count - a.count);
+    const topOthersSizes = othersSizesArray.slice(0, 2);
+    let otherSizesTotal = 0;
+    for (let i = 2; i < othersSizesArray.length; i++) {
+      otherSizesTotal += othersSizesArray[i].count;
+    }
+    const othersObsCategory = {
+      obsCategory: 'Others',
+      total: othersObsTotal,
+      sizeCategories: [
+        ...topOthersSizes,
+        ...(otherSizesTotal > 0 ? [{ name: 'Other Sizes', count: otherSizesTotal }] : [])
+      ]
+    };
+
+    // For each top obsCategory, take top 2 size categories + "Other Sizes"
+    const finalBreakdown = topObs.map(obs => {
+      const topSizes = obs.sizeCategories.slice(0, 2);
+      let otherSizesTotal = 0;
+      for (let i = 2; i < obs.sizeCategories.length; i++) {
+        otherSizesTotal += obs.sizeCategories[i].count;
+      }
+      const sizeCategories = [
+        ...topSizes,
+        ...(otherSizesTotal > 0 ? [{ name: 'Other Sizes', count: otherSizesTotal }] : [])
+      ];
+      return {
+        obsCategory: obs.obsCategory,
+        total: obs.total,
+        sizeCategories
+      };
+    });
+
+    if (othersObsTotal > 0) {
+      finalBreakdown.push(othersObsCategory);
+    }
+
+    // --------------------------------------------------------------
+    // Response
+    // --------------------------------------------------------------
+    res.json({
+      brand,
+      period: { startDate, endDate },
+      totalReceived: registers.length,
+      recommended: {
+        total: finalBreakdown.reduce((sum, m) => sum + m.total, 0),
+        breakdown: finalBreakdown
+      },
+      nr: nrCount,
+      scn: scnCount,
+      pending: pendingCount
+    });
+
+  } catch (error) {
+    console.error('Error generating brand report:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 };
