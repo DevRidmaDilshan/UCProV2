@@ -99,6 +99,8 @@ const BrandReport = () => {
         const defectPercent = totalR ? ((defect.total / totalR) * 100).toFixed(1) : '0.0';
         html += `
           <div style="text-align: center; min-width: 120px;">
+            <!-- Arrow above each defect box -->
+            <div style="font-size: 22px; margin-bottom: 6px; color: #2c3e50;">▼</div>
             <div style="background: #f8c471; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #e67e22;">
               <strong>${defect.obsCategory}</strong><br/>
               ${defect.total} (${defectPercent}%)
@@ -245,7 +247,7 @@ const BrandReport = () => {
           <div class="flowchart">
             <!-- Root -->
             <div class="root-box">
-              Received During The Month<br/>
+              Received During <br/>The Month<br/>
               <span style="font-size: 20px;">${totalReceived}</span><br/>
               100%
             </div>
@@ -254,35 +256,31 @@ const BrandReport = () => {
             <!-- Main branches -->
             <div class="branches">
               <div class="branch">
-                <div class="branch-box r">R</div>
-                <div class="branch-value">${totalR}</div>
-                <div class="branch-percent">${rPercent}%</div>
+              <div class="arrow-down">▼</div>
+                <div class="branch-box r">R <br/>${totalR} <br/> ${rPercent}% </div>
               </div>
               <div class="branch">
-                <div class="branch-box nr">NR</div>
-                <div class="branch-value">${totalNR}</div>
-                <div class="branch-percent">${nrPercent}%</div>
+              <div class="arrow-down">▼</div>
+                <div class="branch-box nr">NR <br/> ${totalNR} <br/> ${nrPercent}%</div>
               </div>
               <div class="branch">
-                <div class="branch-box scn">SCN</div>
-                <div class="branch-value">${totalSCN}</div>
-                <div class="branch-percent">${scnPercent}%</div>
+              <div class="arrow-down">▼</div>
+                <div class="branch-box scn">SCN <br/> ${totalSCN} <br/> ${scnPercent}%</div>
               </div>
               <div class="branch">
-                <div class="branch-box pending">Pending</div>
-                <div class="branch-value">${totalPending}</div>
-                <div class="branch-percent">${pendingPercent}%</div>
+              <div class="arrow-down">▼</div>
+                <div class="branch-box pending">Pending <br/> ${totalPending} <br/> ${pendingPercent}% </div>
               </div>
             </div>
 
             <!-- R Breakdown -->
             ${totalR > 0 ? `
-              <div class="r-section">
-                <div class="arrow-down">▼</div>
-                <div class="r-title">Breakdown of R (Recommended)</div>
-                ${buildRTree()}
-              </div>
-            ` : ''}
+            <div class="r-section">
+              <div class="r-title">Breakdown of R (Recommended)</div>
+              <div class="arrow-down">▼</div>
+              ${buildRTree()}
+            </div>
+          ` : ''}
           </div>
 
           <div class="footer">
