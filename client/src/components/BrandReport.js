@@ -75,7 +75,7 @@ const BrandReport = () => {
     }
   };
 
-  // Build flowchart HTML with arrows
+  // Build compact, one‑page flowchart HTML
   const buildFlowchartHTML = () => {
     if (!reportData) return '';
     const { brand, period, totalReceived, recommended, nr, scn, pending } = reportData;
@@ -89,33 +89,31 @@ const BrandReport = () => {
     const scnPercent = totalReceived ? ((totalSCN / totalReceived) * 100).toFixed(1) : '0.0';
     const pendingPercent = totalReceived ? ((totalPending / totalReceived) * 100).toFixed(1) : '0.0';
 
-    // Build R breakdown HTML for the flowchart (nested lists with lines)
+    // Build R breakdown tree HTML (compact)
     const buildRTree = () => {
       const breakdown = recommended.breakdown || [];
-      if (breakdown.length === 0) return '<div>No R breakdown</div>';
-      let html = '<div class="tree">';
+      if (breakdown.length === 0) return '<div style="text-align:center;">No R breakdown</div>';
+      
+      let html = '<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">';
       breakdown.forEach(defect => {
         const defectPercent = totalR ? ((defect.total / totalR) * 100).toFixed(1) : '0.0';
         html += `
-          <div class="tree-node">
-            <div class="node-box defect-node">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="background: #f8c471; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #e67e22;">
               <strong>${defect.obsCategory}</strong><br/>
               ${defect.total} (${defectPercent}%)
             </div>
-            <div class="children">
-        `;
-        defect.sizeCategories.forEach(size => {
-          const sizePercent = defect.total ? ((size.count / defect.total) * 100).toFixed(1) : '0.0';
-          html += `
-            <div class="tree-node">
-              <div class="node-box size-node">
-                ${size.name}<br/>
-                ${size.count} (${sizePercent}%)
-              </div>
+            <div style="margin-top: 8px;">
+              ${defect.sizeCategories.map(size => {
+                const sizePercent = defect.total ? ((size.count / defect.total) * 100).toFixed(1) : '0.0';
+                return `<div style="background: #d5f5e3; margin-top: 4px; padding: 4px 8px; border-radius: 6px; border-left: 3px solid #27ae60;">
+                          ${size.name}<br/>
+                          ${size.count} (${sizePercent}%)
+                        </div>`;
+              }).join('')}
             </div>
-          `;
-        });
-        html += `</div></div>`;
+          </div>
+        `;
       });
       html += '</div>';
       return html;
@@ -129,230 +127,163 @@ const BrandReport = () => {
         <title>${brand} - Flowchart Report</title>
         <style>
           * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
           }
           body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background: white;
-            padding: 30px 20px;
-            margin: 0;
+            padding: 15px;
+            font-size: 11px;
           }
-          .report-container {
-            max-width: 1200px;
+          .report {
+            max-width: 1100px;
             margin: 0 auto;
           }
           .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
           }
           .header h1 {
+            font-size: 20px;
             margin: 0;
-            font-size: 28px;
-            color: #2c3e50;
           }
           .header h2 {
-            margin: 5px 0;
-            font-size: 18px;
-            color: #7f8c8d;
+            font-size: 14px;
+            color: #555;
           }
           .date-range {
             text-align: center;
-            font-size: 14px;
-            margin-bottom: 40px;
-            color: #2c3e50;
+            font-size: 11px;
+            margin-bottom: 20px;
           }
-          /* Flowchart tree styles */
-          .tree {
+          .flowchart {
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative;
-          }
-          .tree-root {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 40px;
           }
           .root-box {
             background: #3498db;
             color: white;
-            padding: 15px 25px;
+            padding: 8px 16px;
             border-radius: 10px;
             text-align: center;
             font-weight: bold;
-            font-size: 18px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            min-width: 200px;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 5px;
           }
-          .main-branches {
+          .arrow-down {
+            font-size: 20px;
+            margin: 5px 0;
+            text-align: center;
+          }
+          .branches {
             display: flex;
             justify-content: space-around;
             flex-wrap: wrap;
-            gap: 30px;
-            margin: 30px 0 40px;
-            position: relative;
+            gap: 15px;
+            margin: 10px 0 15px;
+            width: 100%;
           }
           .branch {
             text-align: center;
             flex: 1;
-            min-width: 120px;
+            min-width: 80px;
           }
           .branch-box {
-            padding: 12px;
+            padding: 6px 10px;
             border-radius: 8px;
             color: white;
             font-weight: bold;
-            margin-bottom: 10px;
+            font-size: 12px;
           }
           .branch-box.r { background-color: #2ecc71; }
           .branch-box.nr { background-color: #e74c3c; }
           .branch-box.scn { background-color: #f39c12; }
           .branch-box.pending { background-color: #95a5a6; }
-          .arrow-down {
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 20px solid #7f8c8d;
-            margin: 10px auto;
-          }
-          .r-breakdown {
-            margin-top: 30px;
-            border-top: 2px dashed #bdc3c7;
-            padding-top: 30px;
-          }
-          .r-breakdown-title {
-            text-align: center;
-            font-size: 18px;
+          .branch-value {
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 20px;
-            color: #2c3e50;
+            margin-top: 4px;
           }
-          .tree {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 40px;
+          .branch-percent {
+            font-size: 10px;
+            color: #555;
           }
-          .tree-node {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
+          .r-section {
+            margin-top: 15px;
+            border-top: 1px dashed #ccc;
+            padding-top: 15px;
+            width: 100%;
           }
-          .node-box {
-            background: #ecf0f1;
-            border-radius: 8px;
-            padding: 10px 15px;
+          .r-title {
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            min-width: 140px;
-          }
-          .defect-node {
-            background: #f8c471;
-            border-left: 5px solid #e67e22;
-          }
-          .size-node {
-            background: #d5f5e3;
-            border-left: 5px solid #27ae60;
-          }
-          .children {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-            position: relative;
-          }
-          /* Draw connecting lines (simple) */
-          .tree-node:not(:only-child)::before {
-            content: '';
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            width: 2px;
-            height: 20px;
-            background: #7f8c8d;
-            transform: translateX(-50%);
-          }
-          .children {
-            position: relative;
-          }
-          .children::before {
-            content: '';
-            position: absolute;
-            top: -10px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #7f8c8d;
-          }
-          .tree-node .children .tree-node::before {
-            top: -10px;
-            height: 10px;
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 12px;
           }
           .footer {
-            margin-top: 50px;
+            margin-top: 20px;
             text-align: center;
-            font-size: 10px;
-            color: #95a5a6;
+            font-size: 8px;
+            color: #888;
           }
         </style>
       </head>
       <body>
-        <div class="report-container">
+        <div class="report">
           <div class="header">
             <h1>${brand}</h1>
-            <h2>SUMMARIZED REPORT (Flowchart)</h2>
+            <h2>SUMMARIZED REPORT</h2>
           </div>
           <div class="date-range">
-            Date Range : ${period.startDate} - ${period.endDate}
+            ${period.startDate} - ${period.endDate}
           </div>
 
-          <!-- Root -->
-          <div class="tree-root">
+          <div class="flowchart">
+            <!-- Root -->
             <div class="root-box">
-              Received During the Month<br/>
-              <span style="font-size: 32px;">${totalReceived}</span><br/>
+              Received During The Month<br/>
+              <span style="font-size: 20px;">${totalReceived}</span><br/>
               100%
             </div>
+            <div class="arrow-down">▼</div>
+
+            <!-- Main branches -->
+            <div class="branches">
+              <div class="branch">
+                <div class="branch-box r">R</div>
+                <div class="branch-value">${totalR}</div>
+                <div class="branch-percent">${rPercent}%</div>
+              </div>
+              <div class="branch">
+                <div class="branch-box nr">NR</div>
+                <div class="branch-value">${totalNR}</div>
+                <div class="branch-percent">${nrPercent}%</div>
+              </div>
+              <div class="branch">
+                <div class="branch-box scn">SCN</div>
+                <div class="branch-value">${totalSCN}</div>
+                <div class="branch-percent">${scnPercent}%</div>
+              </div>
+              <div class="branch">
+                <div class="branch-box pending">Pending</div>
+                <div class="branch-value">${totalPending}</div>
+                <div class="branch-percent">${pendingPercent}%</div>
+              </div>
+            </div>
+
+            <!-- R Breakdown -->
+            ${totalR > 0 ? `
+              <div class="r-section">
+                <div class="arrow-down">▼</div>
+                <div class="r-title">Breakdown of R (Recommended)</div>
+                ${buildRTree()}
+              </div>
+            ` : ''}
           </div>
-
-          <!-- Arrow from root to branches -->
-          <div class="arrow-down"></div>
-
-          <!-- Main branches: R, NR, SCN, Pending -->
-          <div class="main-branches">
-            <div class="branch">
-              <div class="branch-box r">R (Recommended)</div>
-              <div>${totalR}</div>
-              <div>${rPercent}%</div>
-            </div>
-            <div class="branch">
-              <div class="branch-box nr">NR</div>
-              <div>${totalNR}</div>
-              <div>${nrPercent}%</div>
-            </div>
-            <div class="branch">
-              <div class="branch-box scn">SCN</div>
-              <div>${totalSCN}</div>
-              <div>${scnPercent}%</div>
-            </div>
-            <div class="branch">
-              <div class="branch-box pending">Pending</div>
-              <div>${totalPending}</div>
-              <div>${pendingPercent}%</div>
-            </div>
-          </div>
-
-          <!-- R Breakdown with arrows -->
-          ${totalR > 0 ? `
-            <div class="r-breakdown">
-              <div class="arrow-down"></div>
-              <div class="r-breakdown-title">▼ Breakdown of R (Recommended) ▼</div>
-              ${buildRTree()}
-            </div>
-          ` : ''}
 
           <div class="footer">
             Generated on ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}
@@ -363,7 +294,7 @@ const BrandReport = () => {
     `;
   };
 
-  // Download PDF (flowchart style)
+  // Download PDF – scaled to fit one page
   const handleDownloadPDF = async () => {
     if (!reportData) {
       alert('No report data to download');
@@ -376,7 +307,11 @@ const BrandReport = () => {
       tempDiv.innerHTML = htmlContent;
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '0';
       document.body.appendChild(tempDiv);
+
+      // Wait for rendering
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const canvas = await html2canvas(tempDiv, {
         scale: 2,
@@ -387,22 +322,31 @@ const BrandReport = () => {
       document.body.removeChild(tempDiv);
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 190; // mm
-      const pageHeight = 277;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20; // margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 10;
 
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // If image height is larger than page height, we scale it down to fit
+      let finalHeight = imgHeight;
+      let yOffset = 10;
+      if (imgHeight > pageHeight - 20) {
+        // Scale to fit height
+        const scale = (pageHeight - 20) / imgHeight;
+        finalHeight = pageHeight - 20;
+        // We'll add the image scaled; width adjusts accordingly
+        const scaledWidth = imgWidth * scale;
+        const xOffset = (pageWidth - scaledWidth) / 2;
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, scaledWidth, finalHeight);
+      } else {
+        pdf.addImage(imgData, 'PNG', 10, yOffset, imgWidth, finalHeight);
       }
+
       pdf.save(`${selectedBrand}_flowchart_${startDate}_to_${endDate}.pdf`);
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -412,7 +356,7 @@ const BrandReport = () => {
     }
   };
 
-  // Excel download (tabular, hierarchical)
+  // Excel download (tabular)
   const handleDownloadExcel = () => {
     if (!reportData) {
       alert('No report data to download');
