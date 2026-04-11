@@ -17,6 +17,7 @@ import Dashboard from './components/Dashboard';
 import DailyReport from './components/DailyReport';
 import BrandReport from './components/BrandReport';
 import ReportGenerator from './components/ReportGenerator';
+import Recheck from './components/Recheck';
 
 // Create a custom theme
 const theme = createTheme({
@@ -86,6 +87,7 @@ function App() {
     { label: 'Observation Summary', component: <DailyReport /> },
     { label: 'Brand Report', component: <BrandReport /> },
     { label: 'Reports', component: <ReportGenerator /> },
+    { label: 'Recheck', component: <Recheck /> },
   ];
 
   return (

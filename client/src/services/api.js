@@ -66,3 +66,8 @@ export const getAllRegistersForDropdown = () => {
 export const getRegisterById = (id) => {
   return axios.get(`/api/registers/${id}`);
 };
+
+export const getRegisterListForRecheck = () => axios.get(`${API_BASE_URL}/rechecks/register-list`);
+export const getRegisterDetailsForRecheck = (searchType, value) => axios.get(`${API_BASE_URL}/rechecks/register-details`, { params: { searchType, value } });
+export const saveRecheck = (data) => axios.post(`${API_BASE_URL}/rechecks/save`, data);
+export const getAllRechecks = () => axios.get(`${API_BASE_URL}/rechecks/all`);
