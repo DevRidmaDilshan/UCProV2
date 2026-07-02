@@ -253,60 +253,315 @@ const Recheck = () => {
     }
   };
 
+  // Updated print function with the same table structure as original note
   const handlePrint = (recheck) => {
     const printWindow = window.open('', '_blank');
-    const logoHtml = `<img src="/recheck.png" alt="Logo" style="height: 60px; float: left;">`;
+    const logoHtml = `<img src="/recheck.png" alt="Logo" style="height: 200px; position: absolute; top: 0px; left:0px;">`;
+    
+    // Determine header title and note number label
+    let headerTitle = "RECHECK NOTE";
+    let noteNumberLabel = "Recheck No";
     const recheckDisplay = recheck.reNo ? `RE${recheck.reNo.toString().padStart(4, '0')}` : recheck.reObsNo;
+    
+    // Format observations with line breaks
+    const formattedPrevObs = recheck.techObs ? recheck.techObs.replace(/\n/g, '<br/>') : 'N/A';
+    const formattedPresentObs = recheck.reObs ? recheck.reObs.replace(/\n/g, '<br/>') : 'N/A';
+    
     const content = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>Recheck Note - ${recheckDisplay}</title>
+        <title>${headerTitle} - ${recheckDisplay}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .container { max-width: 900px; margin: auto; border: 1px solid #000; padding: 20px; position: relative; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .header h1 { margin: 0; font-size: 24px; }
-          .logo { position: absolute; top: 20px; left: 20px; }
-          .title { text-align: center; font-size: 18px; font-weight: bold; margin: 10px 0; text-decoration: underline; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #000; padding: 8px; vertical-align: top; }
-          th { background: #f0f0f0; text-align: center; }
-          .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
-          .footer { margin-top: 20px; font-size: 10px; text-align: center; font-style: italic; }
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            width: 100%;
+            border: 1px solid #000;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative;
+          }
+          .header {
+            text-align: right;
+            margin-top: 25px;
+          }
+          .header div {
+            margin: 2px 0;
+          }
+          .title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 25px;
+            margin: 5px 0 15px;
+            text-transform: uppercase;
+            text-decoration: underline;
+          }
+          table {
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            width: 100%;
+          }
+          th, td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+            vertical-align: middle;
+          }
+          .claim-info {
+            width: 45%;
+            margin-left: auto;
+            margin-top: 75px;
+          }
+          .claim-info th, .claim-info td {
+            height: 25px;
+          }
+          .agent-customer {
+            width: 100%;
+          }
+          .agent-customer th, .agent-customer td {
+            height: 30px;
+          }
+          .tyre-details {
+            width: 100%;
+          }
+          .tyre-details th, .tyre-details td {
+            height: 25px;
+          }
+          .observations {
+            width: 100%;
+          }
+          .observations td {
+            height: auto;
+            min-height: 60px;
+            text-align: left;
+            padding: 8px;
+          }
+          .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0 20px;
+          }
+          .signature-box {
+            width: 45%;
+            text-align: center;
+          }
+          .refund-table {
+            width: 60%;
+            margin: 0 0 20px auto;
+          }
+          .refund-table th, .refund-table td {
+            height: 15px;
+          }
+          .approval {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+          }
+          .approval div {
+            width: 45%;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 20px;
+            font-style: italic;
+          }
+          .toolbar {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+          .toolbar button {
+            margin: 0 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+          }
+          @media print {
+            body { 
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              border: none;
+              padding: 0;
+            }
+            .toolbar {
+              display: none;
+            }
+          }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="logo">${logoHtml}</div>
-          <div class="header">
-            <h1>RECHECK NOTE</h1>
-            <p>Recheck No: ${recheckDisplay} | Reg No: ${recheck.id} | Obs No: ${recheck.obsNo || 'N/A'}</p>
-          </div>
-          <div class="title">TYRE INSPECTION REPORT</div>
-          <table>
-            <tr><th style="width: 20%;">Claim No</th><td colspan="3">${recheck.claimNo || 'N/A'}</td></tr>
-            <tr><th>Dealer</th><td>${recheck.dealerView || 'N/A'}</td><th>Brand</th><td>${recheck.brand || 'N/A'}</td></tr>
-            <tr><th>Size</th><td>${recheck.size || 'N/A'}</td><th>Serial No</th><td>${recheck.serialNo || 'N/A'}</td></tr>
-            <tr><th colspan="4">Previous Observation</th></tr>
-            <tr><th>Date</th><td colspan="3">${recheck.obsDate ? format(new Date(recheck.obsDate), 'dd/MM/yyyy') : 'N/A'}</td></tr>
-            <tr><th>Status</th><td colspan="3">${recheck.obsStatus || 'N/A'}</td></tr>
-            <tr><th>Technical Observation</th><td colspan="3">${(recheck.techObs || 'N/A').replace(/\n/g, '<br/>')}</td></tr>
-            <tr><th>Remaining Tread Depth</th><td colspan="3">${recheck.treadDepth || 'N/A'}</td></tr>
-            <tr><th colspan="4">Present Observation (Recheck)</th></tr>
-            <tr><th>Date</th><td colspan="3">${recheck.reObsDate ? format(new Date(recheck.reObsDate), 'dd/MM/yyyy') : 'N/A'}</td></tr>
-            <tr><th>Status</th><td colspan="3">${recheck.reObsStatus || 'N/A'}</td></tr>
-            <tr><th>Technical Observation</th><td colspan="3">${(recheck.reObs || 'N/A').replace(/\n/g, '<br/>')}</td></tr>
-            <tr><th>Remaining Tread Depth</th><td colspan="3">${recheck.reTreadDepth || 'N/A'}</td></tr>
-          </table>
-          <div class="signatures">
-            <div>Date: ${recheck.reObsDate ? format(new Date(recheck.reObsDate), 'dd/MM/yyyy') : 'N/A'}</div>
-            <div>Consultant in Tyre Technology</div>
-          </div>
-          <div class="footer">This is a computer generated document – valid without signature</div>
+        <div class="toolbar">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
         </div>
-        <script>window.print();</script>
+        <div class="container">
+          ${logoHtml}
+          <div class="header">
+            <div>Reg. No: <b>${recheck.id}</b></div>
+            <div>${noteNumberLabel}: <b>${recheckDisplay}</b></div>
+            <div>Obs. No: <b>${recheck.obsNo || 'N/A'}</b></div>
+          </div>
+          
+          <!-- Claim Info Table -->
+          <table class="claim-info">
+            <tr>
+              <th style="width: 50%;">Claim No</th>
+              <th>Date of Claim</th>
+            </tr>
+            <tr>
+              <td>${recheck.claimNo || 'N/A'}</td>
+              <td></td>
+            </tr>
+           </table>
+          
+          <!-- Agent/Customer Table -->
+          <table class="agent-customer">
+            <tr>
+              <th style="width: 50%;">AGENT</th>
+              <th>CUSTOMER</th>
+            </tr>
+            <tr>
+              <td>${recheck.dealerView || 'N/A'}</td>
+              <td></td>
+            </tr>
+          </table>
+          
+          <!-- Tyre Details Table -->
+          <table class="tyre-details">
+            <tr>
+              <th style="width: 33%;">Brand</th>
+              <th style="width: 34%;">Size</th>
+              <th style="width: 33%;">Serial No</th>
+            </tr>
+            <tr>
+              <td>${recheck.brand || 'N/A'}</td>
+              <td>${recheck.size || 'N/A'}</td>
+              <td>${recheck.serialNo || 'N/A'}</td>
+            </tr>
+          </table>
+
+          <!-- Tyre OBS Table -->
+          <table class="tyre-details">
+            <tr>
+              <th style="width: 33%;"></th>
+              <th style="width: 34%;">Previous</th>
+              <th style="width: 33%;">Present</th>
+            </tr>
+            <tr>
+              <td>${recheck.brand || 'N/A'}</td>
+              <td>${{formattedPrevObs} || 'N/A'}</td>
+              <td>${recheck.treadDepth || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td>${recheck.brand || 'N/A'}</td>
+              <td>${{formattedPresentObs} || 'N/A'}</td>
+              <td>${recheck.retreadDepth || 'N/A'}</td>
+            </tr>
+          </table>
+          
+          <!-- Previous Observation -->
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left;">Previous Technical Observations :</th>
+              <td style="width: 75%; text-align: left;">${formattedPrevObs}</td>
+            </tr>
+          </table>
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left;">Previous Remaining Tread Depth :</th>
+              <td style="width: 75%; text-align: center;">${recheck.treadDepth || 'N/A'}</td>
+            </tr>
+          </table>
+          
+          
+          <!-- Present Observation (Recheck) -->
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left;">Present Technical Observations :</th>
+              <td style="width: 75%; text-align: left;">${formattedPresentObs}</td>
+            </tr>
+          </table>
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left;">Present Remaining Tread Depth :</th>
+              <td style="width: 75%; text-align: center;">${recheck.reTreadDepth || 'N/A'}</td>
+            </tr>
+          </table>
+          
+          <!-- Refund Recommendation -->
+          <b>
+            ${recheck.reObsStatus === 'Recommended' 
+              ? 'Refund : Recommended' 
+              : recheck.reObsStatus === 'Forwarded for Management Decision' 
+                ? 'Forwarded for Management Decision' 
+              : recheck.reObsStatus === 'Not Recommended' 
+                ? 'Refund : Not Recommended'
+                : 'Refund : Not Recommended'}
+          </b>
+          
+          <!-- Signatures -->
+          <div class="signatures">
+            <div class="signature-box">
+              ${recheck.reObsDate ? format(new Date(recheck.reObsDate), 'dd/MM/yyyy') : 'N/A'} <br>
+              <br>
+              <b>Date</b>
+            </div>
+            <div class="signature-box">
+              __________________________ <br>
+              <br>
+              <b>Consultant in Tyre Technology</b>
+            </div>
+          </div>
+          <br>
+          _________________________________________________________________________________________________<br>
+          <br>
+          <br>
+          
+          <!-- NSD / Refund Table -->
+          <table class="refund-table">
+            <tr>
+              <th colspan="2">NSD</th>
+              <th colspan="2">Refund</th>
+            </tr>
+            <tr>
+              <th>Spec</th>
+              <th>Remaining</th>
+              <th>%</th>
+              <th>Rs.</th>
+            </tr>
+            <tr>
+              <td style="height: 30px;"></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </table>
+          
+          <!-- Approval -->
+          <div class="approval">
+            <div>Approved by:</div>
+            <div>Accepted by:</div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <br><br>
+            _______________________________________________________________________<br>
+            <b><i>N.B. A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
+          </div>
+        </div>
       </body>
       </html>
     `;

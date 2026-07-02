@@ -12,12 +12,14 @@ import {
   Box,
   Tooltip,
 } from '@mui/material';
+import MenuPage from './components/MenuPage';
 import RegisterList from './components/RegisterList';
 import Dashboard from './components/Dashboard';
 import DailyReport from './components/DailyReport';
 import BrandReport from './components/BrandReport';
 import ReportGenerator from './components/ReportGenerator';
 import Recheck from './components/Recheck';
+
 
 // Create a custom theme
 const theme = createTheme({
@@ -82,6 +84,7 @@ function App() {
   };
 
   const tabs = [
+    { label: 'Menu Dashboard', component: <MenuPage /> },
     { label: 'Registration', component: <RegisterList /> },
     { label: 'Brand Summary', component: <Dashboard /> },
     { label: 'Observation Summary', component: <DailyReport /> },

@@ -679,3 +679,115 @@ exports.getBrandReport = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// server/controllers/register.controller.js
+
+// Get Menu Dashboard data
+exports.getMenuDashboard = async (req, res) => {
+  try {
+    const { month } = req.query; // format: "YYYY-MM"
+
+    console.log('📊 Menu Dashboard requested for month:', month);
+
+    // 1. Get all available months first (for dropdown)
+    const [monthsResult] = await db.query(
+      `SELECT DISTINCT DATE_FORMAT(receivedDate, '%Y-%m') as month 
+       FROM registers 
+       WHERE receivedDate IS NOT NULL 
+       ORDER BY month DESC`
+    );
+    const availableMonths = monthsResult.map(row => row.month);
+
+    console.log('📅 Available months:', availableMonths);
+
+    // If no months found, return empty data
+    if (availableMonths.length === 0) {
+      return res.json({
+        month: '',
+        monthDisplay: '',
+        monthlyReceived: 0,
+        totalPendingCount: 0,
+        pendingThisMonth: 0,
+        dailyPending: [],
+        availableMonths: []
+      });
+    }
+
+    // If month not provided or invalid, use the latest available month
+    let selectedMonth = month;
+    if (!selectedMonth || !/^\d{4}-\d{2}$/.test(selectedMonth)) {
+      selectedMonth = availableMonths[0];
+      console.log('🔄 Using default month:', selectedMonth);
+    }
+
+    // Ensure selected month exists in available months
+    if (!availableMonths.includes(selectedMonth)) {
+      selectedMonth = availableMonths[0];
+    }
+
+    // 2. Total tyres for the selected month
+    const [totalResult] = await db.query(
+      `SELECT COUNT(*) as total FROM registers WHERE DATE_FORMAT(receivedDate, '%Y-%m') = ?`,
+      [selectedMonth]
+    );
+    const monthlyReceived = totalResult[0]?.total || 0;
+
+    // 3. Total pending count (all time, not just month)
+    const [totalPendingResult] = await db.query(
+      `SELECT COUNT(*) as total FROM registers 
+       WHERE obsStatus IS NULL OR obsStatus = 'Pending'`
+    );
+    const totalPendingCount = totalPendingResult[0]?.total || 0;
+
+    // 4. Pending on this month (pending tyres that were received in the selected month)
+    const [pendingThisMonthResult] = await db.query(
+      `SELECT COUNT(*) as pending FROM registers 
+       WHERE DATE_FORMAT(receivedDate, '%Y-%m') = ? 
+       AND (obsStatus IS NULL OR obsStatus = 'Pending')`,
+      [selectedMonth]
+    );
+    const pendingThisMonth = pendingThisMonthResult[0]?.pending || 0;
+
+    // 5. Daily breakdown: count of pending tyres by receivedDate for the selected month
+    const [dailyPending] = await db.query(
+      `SELECT receivedDate, COUNT(*) as count FROM registers 
+       WHERE DATE_FORMAT(receivedDate, '%Y-%m') = ? 
+       AND (obsStatus IS NULL OR obsStatus = 'Pending')
+       GROUP BY receivedDate 
+       ORDER BY receivedDate ASC`,
+      [selectedMonth]
+    );
+
+    // Format the month for display (e.g., "May-2026")
+    const monthDisplay = formatDisplayMonth(selectedMonth);
+
+    const result = {
+      month: selectedMonth,
+      monthDisplay,
+      monthlyReceived,
+      totalPendingCount,
+      pendingThisMonth,
+      dailyPending,
+      availableMonths
+    };
+
+    console.log('📊 Dashboard result:', result);
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Error fetching menu dashboard:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      details: error.message 
+    });
+  }
+};
+
+// Helper: format "YYYY-MM" to "Mon-YYYY"
+function formatDisplayMonth(month) {
+  if (!month) return '';
+  const [year, monthNum] = month.split('-');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = monthNames[parseInt(monthNum) - 1] || monthNum;
+  return `${monthName}-${year}`;
+}

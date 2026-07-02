@@ -42,9 +42,11 @@ router.post('/brand-report', registerController.generateBrandReport);
 router.get('/dropdown/registers', registerController.getRegistersForDropdown);
 router.get('/brand-report', registerController.getBrandReport);
 
+// server/routes/register.routes.js
+router.get('/menu-dashboard', registerController.getMenuDashboard);
+
 router.get('/:id', registerController.getRegisterById);
 router.put('/:id', registerController.updateRegister);
 router.delete('/:id', registerController.deleteRegister);
-
 
 module.exports = router;
