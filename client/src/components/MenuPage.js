@@ -158,35 +158,6 @@ const MenuPage = () => {
             </Grid>
           </Paper>
 
-          {/* Daily Pending Breakdown */}
-          <Paper sx={{ p: 3, mt: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Daily Pending Counts for {stats.monthDisplay || stats.month}
-            </Typography>
-            {stats.dailyPending && stats.dailyPending.length === 0 ? (
-              <Typography color="textSecondary">No pending tyres for this month</Typography>
-            ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Date</strong></TableCell>
-                      <TableCell align="right"><strong>Pending Count</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {stats.dailyPending && stats.dailyPending.map((row) => (
-                      <TableRow key={row.receivedDate}>
-                        <TableCell>{formatDate(row.receivedDate)}</TableCell>
-                        <TableCell align="right">{row.count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
-
           {/* Pending by Brand - Two Tables (Total & Monthly) */}
           <Grid container spacing={3} sx={{ mt: 3 }}>
             <Grid item xs={12} md={6}>
