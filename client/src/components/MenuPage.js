@@ -19,7 +19,6 @@ const MenuPage = () => {
   const [error, setError] = useState('');
   const [initialLoad, setInitialLoad] = useState(true);
 
-  // Load data on mount
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -28,29 +27,22 @@ const MenuPage = () => {
     setLoading(true);
     setError('');
     try {
-      // If no month provided, let backend pick the latest
       const params = selectedMonth ? { month: selectedMonth } : {};
       const res = await axios.get(`${API_BASE}/registers/menu-dashboard`, { params });
-      console.log('✅ Dashboard data:', res.data);
-
       if (res.data) {
         setStats(res.data);
         if (res.data.availableMonths && res.data.availableMonths.length > 0) {
           setAvailableMonths(res.data.availableMonths);
-          // Set the month to the one returned by backend (could be default)
-          if (res.data.month) {
-            setMonth(res.data.month);
-          }
+          if (res.data.month) setMonth(res.data.month);
         } else {
-          // No data at all
           setStats(null);
           setAvailableMonths([]);
           setMonth('');
         }
       }
     } catch (err) {
-      console.error('❌ Error fetching dashboard:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to load data');
+      console.error('Error fetching dashboard:', err);
+      setError(err.response?.data?.error || 'Failed to load data');
     } finally {
       setLoading(false);
       setInitialLoad(false);
@@ -64,21 +56,16 @@ const MenuPage = () => {
   };
 
   const handleRefresh = () => {
-    if (month) {
-      fetchDashboardData(month);
-    } else {
-      fetchDashboardData();
-    }
+    if (month) fetchDashboardData(month);
+    else fetchDashboardData();
   };
 
-  // Format date for display
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
 
-  // Show loading state
   if (loading && initialLoad) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -93,7 +80,6 @@ const MenuPage = () => {
         Menu Dashboard
       </Typography>
 
-      {/* Controls */}
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={4}>
@@ -173,7 +159,7 @@ const MenuPage = () => {
           </Paper>
 
           {/* Daily Pending Breakdown */}
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 3, mt: 3 }}>
             <Typography variant="h6" gutterBottom>
               Daily Pending Counts for {stats.monthDisplay || stats.month}
             </Typography>
@@ -200,6 +186,77 @@ const MenuPage = () => {
               </TableContainer>
             )}
           </Paper>
+
+          {/* Pending by Brand - Two Tables (Total & Monthly) */}
+          <Grid container spacing={3} sx={{ mt: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Total Pending by Brand (All Time)
+                </Typography>
+                {stats.totalPendingByBrand && stats.totalPendingByBrand.length === 0 ? (
+                  <Typography color="textSecondary">No pending tyres</Typography>
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Brand</strong></TableCell>
+                          <TableCell align="right"><strong>Count</strong></TableCell>
+                          <TableCell align="right"><strong>% of Total Pending</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {stats.totalPendingByBrand && stats.totalPendingByBrand.map((row) => (
+                          <TableRow key={row.brand}>
+                            <TableCell>{row.brand}</TableCell>
+                            <TableCell align="right">{row.count}</TableCell>
+                            <TableCell align="right">
+                              {stats.totalPendingCount > 0 ? ((row.count / stats.totalPendingCount) * 100).toFixed(1) : 0}%
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Monthly Pending by Brand ({stats.monthDisplay})
+                </Typography>
+                {stats.monthlyPendingByBrand && stats.monthlyPendingByBrand.length === 0 ? (
+                  <Typography color="textSecondary">No pending tyres for this month</Typography>
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Brand</strong></TableCell>
+                          <TableCell align="right"><strong>Count</strong></TableCell>
+                          <TableCell align="right"><strong>% of Monthly Pending</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {stats.monthlyPendingByBrand && stats.monthlyPendingByBrand.map((row) => (
+                          <TableRow key={row.brand}>
+                            <TableCell>{row.brand}</TableCell>
+                            <TableCell align="right">{row.count}</TableCell>
+                            <TableCell align="right">
+                              {stats.pendingThisMonth > 0 ? ((row.count / stats.pendingThisMonth) * 100).toFixed(1) : 0}%
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
         </>
       ) : null}
     </Box>
