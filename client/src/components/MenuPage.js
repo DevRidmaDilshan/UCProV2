@@ -131,7 +131,7 @@ const MenuPage = () => {
               {stats.monthDisplay || stats.month || 'No Month'}
             </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: '#e3f2fd' }}>
                   <CardContent>
                     <Typography variant="subtitle1" color="textSecondary">Monthly Received</Typography>
@@ -139,7 +139,7 @@ const MenuPage = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: '#fff3e0' }}>
                   <CardContent>
                     <Typography variant="subtitle1" color="textSecondary">Total Pending Count</Typography>
@@ -147,11 +147,22 @@ const MenuPage = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <Card sx={{ bgcolor: '#e8f5e9' }}>
                   <CardContent>
                     <Typography variant="subtitle1" color="textSecondary">Pending on this Month</Typography>
                     <Typography variant="h3">{stats.pendingThisMonth}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: '#f3e5f5' }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" color="textSecondary">Received on Today</Typography>
+                    <Typography variant="h3">{stats.todayReceived}</Typography>
+                    <Typography variant="caption">
+                      {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </Typography>
                   </CardContent>
                 </Card>
               </Grid>

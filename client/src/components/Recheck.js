@@ -455,48 +455,19 @@ const Recheck = () => {
           <!-- Tyre OBS Table -->
           <table class="tyre-details">
             <tr>
-              <th style="width: 33%;"></th>
+              <th style="width: 34%;"></th>
               <th style="width: 34%;">Previous</th>
               <th style="width: 33%;">Present</th>
             </tr>
             <tr>
-              <td>${recheck.brand || 'N/A'}</td>
-              <td>${{formattedPrevObs} || 'N/A'}</td>
+              <td>Technical Observations :</td>
+              <td>${formattedPrevObs}</td>
+              <td>${formattedPresentObs}</td>
+            </tr>
+            <tr>
+              <td>Remaining Tread Depth :</td>
               <td>${recheck.treadDepth || 'N/A'}</td>
-            </tr>
-            <tr>
-              <td>${recheck.brand || 'N/A'}</td>
-              <td>${{formattedPresentObs} || 'N/A'}</td>
-              <td>${recheck.retreadDepth || 'N/A'}</td>
-            </tr>
-          </table>
-          
-          <!-- Previous Observation -->
-          <table class="observations">
-            <tr>
-              <th style="width: 25%; text-align: left;">Previous Technical Observations :</th>
-              <td style="width: 75%; text-align: left;">${formattedPrevObs}</td>
-            </tr>
-          </table>
-          <table class="observations">
-            <tr>
-              <th style="width: 25%; text-align: left;">Previous Remaining Tread Depth :</th>
-              <td style="width: 75%; text-align: center;">${recheck.treadDepth || 'N/A'}</td>
-            </tr>
-          </table>
-          
-          
-          <!-- Present Observation (Recheck) -->
-          <table class="observations">
-            <tr>
-              <th style="width: 25%; text-align: left;">Present Technical Observations :</th>
-              <td style="width: 75%; text-align: left;">${formattedPresentObs}</td>
-            </tr>
-          </table>
-          <table class="observations">
-            <tr>
-              <th style="width: 25%; text-align: left;">Present Remaining Tread Depth :</th>
-              <td style="width: 75%; text-align: center;">${recheck.reTreadDepth || 'N/A'}</td>
+              <td>${recheck.reTreadDepth || 'N/A'}</td>
             </tr>
           </table>
           
@@ -558,7 +529,7 @@ const Recheck = () => {
           <!-- Footer -->
           <div class="footer">
             <br><br>
-            _______________________________________________________________________<br>
+            ____________________________________________________________________________________________________________<br>
             <b><i>N.B. A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
           </div>
         </div>

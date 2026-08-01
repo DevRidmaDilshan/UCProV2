@@ -344,7 +344,7 @@ const RegisterList = () => {
               <th>Rs.</th>
             </tr>
             <tr>
-              <td style="height: 30px;"></td>
+              <td style="height: 30px;">${register.originalTread || ''}</td>
               <td></td>
               <td></td>
               <td></td>
@@ -753,7 +753,12 @@ const RegisterList = () => {
                     <Typography variant="subtitle2">Serial No & DOT:</Typography>
                     <Typography>{viewRegister.serialNo || 'N/A'}</Typography>
                   </Grid>
-                </Grid>
+                  <Grid item xs={6}>
+                      <Typography variant="subtitle2">Original Tread Depth:</Typography>
+                      <Typography>{viewRegister.originalTread || 'N/A'}</Typography>
+                    </Grid>
+                  </Grid>
+                  
 
                 {viewRegister.obsDate && (
                   <>

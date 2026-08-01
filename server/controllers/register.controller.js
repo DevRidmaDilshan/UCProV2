@@ -682,6 +682,8 @@ exports.getBrandReport = async (req, res) => {
 
 // server/controllers/register.controller.js
 
+// server/controllers/register.controller.js
+
 exports.getMenuDashboard = async (req, res) => {
   try {
     const { month } = req.query;
@@ -702,7 +704,8 @@ exports.getMenuDashboard = async (req, res) => {
         monthlyReceived: 0,
         totalPendingCount: 0,
         pendingThisMonth: 0,
-        dailyPending: [],
+        todayReceived: 0,
+        dailyReceived: [],
         totalPendingByBrand: [],
         monthlyPendingByBrand: [],
         availableMonths: []
@@ -737,17 +740,24 @@ exports.getMenuDashboard = async (req, res) => {
     );
     const pendingThisMonth = pendingThisMonthResult[0]?.pending || 0;
 
-    // 4. Daily pending counts
-    const [dailyPending] = await db.query(
+    // 4. Today's received count
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const [todayResult] = await db.query(
+      `SELECT COUNT(*) as count FROM registers WHERE receivedDate = ?`,
+      [today]
+    );
+    const todayReceived = todayResult[0]?.count || 0;
+
+    // 5. Daily received counts for the selected month
+    const [dailyReceived] = await db.query(
       `SELECT receivedDate, COUNT(*) as count FROM registers 
        WHERE DATE_FORMAT(receivedDate, '%Y-%m') = ? 
-       AND (obsStatus IS NULL OR obsStatus = 'Pending')
        GROUP BY receivedDate 
        ORDER BY receivedDate ASC`,
       [selectedMonth]
     );
 
-    // 5a. Total pending by brand (all time)
+    // 6. Total Pending by Brand (all time)
     const [totalPendingByBrand] = await db.query(
       `SELECT brand, COUNT(*) as count FROM registers 
        WHERE (obsStatus IS NULL OR obsStatus = 'Pending')
@@ -756,7 +766,7 @@ exports.getMenuDashboard = async (req, res) => {
        ORDER BY count DESC`
     );
 
-    // 5b. Monthly pending by brand
+    // 7. Monthly Pending by Brand
     const [monthlyPendingByBrand] = await db.query(
       `SELECT brand, COUNT(*) as count FROM registers 
        WHERE DATE_FORMAT(receivedDate, '%Y-%m') = ? 
@@ -775,7 +785,8 @@ exports.getMenuDashboard = async (req, res) => {
       monthlyReceived,
       totalPendingCount,
       pendingThisMonth,
-      dailyPending,
+      todayReceived,
+      dailyReceived,
       totalPendingByBrand,
       monthlyPendingByBrand,
       availableMonths

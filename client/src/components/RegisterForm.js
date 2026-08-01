@@ -1,13 +1,13 @@
 // RegisterForm.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  TextField, 
-  Button, 
-  MenuItem, 
-  Select, 
-  FormControl, 
-  InputLabel, 
-  Paper, 
+import {
+  TextField,
+  Button,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Paper,
   Typography,
   Autocomplete,
   Box,
@@ -24,10 +24,10 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { format, parseISO } from 'date-fns';
-import { 
-  getInitialData, 
-  getDealerByView, 
-  getSizesByBrand, 
+import {
+  getInitialData,
+  getDealerByView,
+  getSizesByBrand,
   createRegister,
   updateRegister,
   getAllConsultants,
@@ -47,7 +47,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     brand: '',
     size: '',
     sizeCode: '',
-    serialNo:'',
+    serialNo: '',
+    originalTread: '',
     obsDate: format(new Date(), 'yyyy-MM-dd'),
     techObs: '',
     treadDepth: '',
@@ -87,6 +88,264 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   };
 
+  // ---------- PRINT FUNCTION (copied from RegisterList) ----------
+  const printRegister = (register) => {
+    let headerTitle = "PENDING NOTE";
+    let noteNumberLabel = "PENDING No";
+    
+    if (register.obsStatus === 'Recommended') {
+      headerTitle = "CLAIM REFUND NOTE";
+      noteNumberLabel = "CR No";
+    } else if (register.obsStatus === 'Not Recommended') {
+      headerTitle = "NO REFUND NOTE";
+      noteNumberLabel = "NR No";
+    } else if (register.obsStatus === 'Forwarded for Management Decision') {
+      headerTitle = "SPECIAL CONSIDERATION NOTE";
+      noteNumberLabel = "SCN No";
+    }
+
+    const formattedTechObs = register.techObs ? register.techObs.replace(/\n/g, '<br/>') : 'N/A';
+
+    const content = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+      <meta charset="UTF-8">
+      <title>${headerTitle} - ${register.obsNo}</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 15mm;
+        }
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 13px;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          width: 100%;
+          border: 1px solid #000;
+          padding: 10px;
+          box-sizing: border-box;
+        }
+        .header {
+          text-align: right;
+          margin-bottom: 5px;
+        }
+        .header div {
+          margin: 2px 0;
+        }
+        .title {
+          text-align: center;
+          font-weight: bold;
+          font-size: 25px;
+          margin: 5px 0 15px;
+          text-transform: uppercase;
+          text-decoration: underline;
+        }
+        table {
+          border-collapse: collapse;
+          margin-bottom: 8px;
+        }
+        th, td {
+          border: 1px solid #000;
+          padding: 5px;
+          text-align: center;
+          vertical-align: middle;
+        }
+        .claim-info {
+          width: 45%;
+          margin-left: auto;
+          margin-bottom: 15px;
+        }
+        .claim-info th, .claim-info td {
+          height: 25px;
+        }
+        .agent-customer {
+          width: 100%;
+        }
+        .agent-customer th, .agent-customer td {
+          height: 30px;
+        }
+        .tyre-details {
+          width: 100%;
+        }
+        .tyre-details th, .tyre-details td {
+          height: 25px;
+        }
+        .observations {
+          width: 100%;
+        }
+        .observations td {
+          height: auto;
+          min-height: 80px;
+          text-align: left;
+          padding: 8px;
+        }
+        .signatures {
+          display: flex;
+          justify-content: space-between;
+          margin: 40px 0 20px;
+        }
+        .signature-box {
+          width: 45%;
+          text-align: center;
+        }
+        .refund-table {
+          width: 60%;
+          margin: 0 0 20px auto;
+        }
+        .refund-table th, .refund-table td {
+          height: 15px;
+        }
+        .approval {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 30px;
+        }
+        .approval div {
+          width: 45%;
+        }
+        .footer {
+          text-align: center;
+          font-size: 12px;
+          margin-top: 20px;
+          font-style: italic;
+        }
+        @media print {
+          body { 
+            margin: 0;
+            padding: 0;
+          }
+          .container {
+            border: none;
+            padding: 0;
+          }
+          .no-print {
+            display: none;
+          }
+        }
+      </style>
+      </head>
+      <body>
+      <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+      </div>
+        <div class="container">
+          <div class="header">
+            <div>Reg. No:<b>${register.id}</b></div>
+            <div>${noteNumberLabel}: <b>${register.obsNo || 'N/A'}</b></div>
+          </div>
+          <div class="title">${headerTitle}</div>
+          <table class="claim-info">
+            <tr>
+              <th style="width: 50%;">Claim No</th>
+              <th>Date of Claim</th>
+            </tr>
+            <tr>
+              <td>${register.claimNo}</td>
+              <td></td>
+            </tr>
+          </table>
+          <table class="agent-customer" style="width:100%;">
+            <tr>
+              <th style="width: 50%;">AGENT</th>
+              <th>CUSTOMER</th>
+            </tr>
+            <tr>
+              <td>${register.dealerView || 'N/A'}</td>
+              <td></td>
+            </tr>
+          </table>
+          <table class="tyre-details">
+            <tr>
+              <th style="width: 33%;">Brand</th>
+              <th style="width: 34%;">Size</th>
+              <th style="width: 33%;">Serial No</th>
+            </tr>
+            <tr>
+              <td>${register.brand}</td>
+              <td>${register.size}</td>
+              <td>${register.serialNo || 'N/A'}</td>
+            </tr>
+          </table>
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left; height: 80px;">Technical Observations :</th>
+              <td style="width: 75%; height: auto; text-align: left;">${formattedTechObs}</td>
+            </tr>
+          </table>
+          <table class="observations">
+            <tr>
+              <th style="width: 25%; text-align: left; height: 20px;">Remaining Tread Depth :</th>
+              <td style="width: 75%; height: 20px; text-align: center;">${register.treadDepth || 'N/A'}</td>
+            </tr>
+          </table>
+          <b>
+            ${register.obsStatus === 'Recommended' 
+              ? 'Refund : Recommended' 
+              : register.obsStatus === 'Forwarded for Management Decision' 
+                ? 'Forwarded for Management Decision' 
+              : register.obsStatus === 'Not Recommended' 
+                ? 'Refund : Not Recommended'
+                : 'Refund : Not Recommended'}
+          </b>
+          <div class="signatures">
+            <div class="signature-box">
+              ${register.obsDate ? format(new Date(register.obsDate), 'dd/MM/yyyy') : 'N/A'} <br>
+              <br>
+              <b>Date</b>
+            </div>
+            <div class="signature-box">
+              __________________________ <br>
+              <br>
+              <b>Consultant in Tyre Technology</b>
+            </div>
+          </div>
+          <br>
+          _________________________________________________________________________________________________<br>
+          <br>
+          <br>
+          <table class="refund-table">
+            <tr>
+              <th colspan="2">NSD</th>
+              <th colspan="2">Refund</th>
+            </tr>
+            <tr>
+              <th>Spec</th>
+              <th>Remaining</th>
+              <th>%</th>
+              <th>Rs.</th>
+            </tr>
+            <tr>
+              <td style="height: 30px;">${register.originalTread || ''}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </table>
+          <div class="approval">
+            <div>Approved by:</div>
+            <div>Accepted by:</div>
+          </div>
+          <div class="footer">
+          <br><br>
+          _______________________________________________________________________<br>
+            <b><i>N.B.A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+  // ----------------------------------------------------------------
+
   const parseTechnicalObservations = useCallback((techObsText) => {
     if (!techObsText) return;
 
@@ -109,21 +368,21 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       const numberedMatch = trimmed.match(/^\d+\)\s+(.+)$/);
       const observationText = numberedMatch ? numberedMatch[1] : trimmed;
 
-      const predefinedObs = observations.find(obs => 
-        observationText.startsWith(`${obs.obId} - `) || observationText === obs.observation
+      const predefinedObs = observations.find(obs =>
+        observationText.startsWith(`${obs.obId} - ${obs.observation}`) || observationText === obs.observation
       );
 
       if (predefinedObs) {
-        newSelected.push({ 
-          id: predefinedObs.obId, 
-          observation: predefinedObs.observation, 
-          isCustom: false 
+        newSelected.push({
+          id: predefinedObs.obId,
+          observation: predefinedObs.observation,
+          isCustom: false
         });
       } else {
-        newSelected.push({ 
-          id: `CUSTOM-${Date.now()}`, 
-          observation: observationText, 
-          isCustom: true 
+        newSelected.push({
+          id: `CUSTOM-${Date.now()}`,
+          observation: observationText,
+          isCustom: true
         });
       }
     });
@@ -147,7 +406,6 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         const observationsRes = await getAllObservations();
         setObservations(observationsRes.data || []);
 
-        // ✅ Corrected endpoints
         const [locationsRes, stacksRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/registers/locations/all`),
           axios.get(`${API_BASE_URL}/registers/stacks/all`)
@@ -156,6 +414,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         setStacks(stacksRes.data);
       } catch (error) {
         console.error('Error fetching initial data:', error);
+        setMessage('Failed to load initial data.');
       }
     };
     fetchInitialData();
@@ -181,19 +440,27 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         stackName: initialData.stackName || ''
       }));
 
+      // Fetch sizes for the brand and match the selected size
       if (initialData.brand) {
-        getSizesByBrand(initialData.brand).then(({ data }) => {
-          setSizes(data.map(s => s.size));
-          setSizeOptions(data);
-          const selectedSize = data.find(s => s.sizeCode === initialData.sizeCode);
-          if (selectedSize) {
-            setFormData(prev => ({
-              ...prev,
-              size: selectedSize.size,
-              sizeCode: selectedSize.sizeCode
-            }));
-          }
-        });
+        getSizesByBrand(initialData.brand)
+          .then(({ data }) => {
+            setSizes(data.map(s => s.size));
+            setSizeOptions(data);
+            // Find the size that matches either sizeCode or originalTread
+            let selectedSize = data.find(s => s.sizeCode === initialData.sizeCode);
+            if (!selectedSize) {
+              selectedSize = data.find(s => s.originalTread === initialData.originalTread);
+            }
+            if (selectedSize) {
+              setFormData(prev => ({
+                ...prev,
+                size: selectedSize.size,
+                sizeCode: selectedSize.sizeCode,
+                originalTread: selectedSize.originalTread
+              }));
+            }
+          })
+          .catch(err => console.error('Error fetching sizes:', err));
       }
 
       if (initialData.techObs) {
@@ -204,6 +471,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   }, [initialData, hasParsedInitialData, observations, parseTechnicalObservations]);
 
+  // Fetch dealer code when dealerView changes
   useEffect(() => {
     if (formData.dealerView) {
       getDealerByView(formData.dealerView)
@@ -214,6 +482,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     }
   }, [formData.dealerView]);
 
+  // Fetch sizes when brand changes
   useEffect(() => {
     if (formData.brand) {
       getSizesByBrand(formData.brand)
@@ -225,10 +494,11 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     } else {
       setSizes([]);
       setSizeOptions([]);
-      setFormData(prev => ({ ...prev, size: '', sizeCode: '' }));
+      setFormData(prev => ({ ...prev, size: '', sizeCode: '', originalTread: '' }));
     }
   }, [formData.brand]);
 
+  // Update techObs whenever selected observations or defect flags change
   useEffect(() => {
     let text = '';
     selectedObservations.forEach((obs, i) => {
@@ -245,10 +515,11 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       setFormData(prev => ({
         ...prev,
         size: newValue,
-        sizeCode: selectedSize ? selectedSize.sizeCode : ''
+        sizeCode: selectedSize ? selectedSize.sizeCode : '',
+        originalTread: selectedSize ? selectedSize.originalTread : ''
       }));
     } else {
-      setFormData(prev => ({ ...prev, size: '', sizeCode: '' }));
+      setFormData(prev => ({ ...prev, size: '', sizeCode: '', originalTread: '' }));
     }
   };
 
@@ -270,11 +541,17 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           case 'Forwarded for Management Decision': type = 'SCN'; break;
           default: return;
         }
-        const currentObsNo = formData.obsNo;
-        if (!currentObsNo || !currentObsNo.startsWith(type)) {
-          const { data } = await getNextObservationNumber(type);
-          setFormData(prev => ({ ...prev, obsNo: data.nextNumber }));
-        }
+        setFormData(prev => {
+          const currentObsNo = prev.obsNo;
+          if (!currentObsNo || !currentObsNo.startsWith(type)) {
+            getNextObservationNumber(type)
+              .then(({ data }) => {
+                setFormData(prevState => ({ ...prevState, obsNo: data.nextNumber }));
+              })
+              .catch(err => console.error('Error generating observation number:', err));
+          }
+          return prev;
+        });
       } catch (err) {
         console.error('Error generating observation number:', err);
       }
@@ -286,11 +563,11 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
   const addObservation = () => {
     if (currentObservation && !selectedObservations.find(obs => obs.id === currentObservation.obId)) {
       setSelectedObservations(prev => [
-        ...prev, 
-        { 
-          id: currentObservation.obId, 
-          observation: currentObservation.observation, 
-          isCustom: false 
+        ...prev,
+        {
+          id: currentObservation.obId,
+          observation: currentObservation.observation,
+          isCustom: false
         }
       ]);
       setCurrentObservation(null);
@@ -305,19 +582,21 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
     if (customObservation.trim()) {
       setSelectedObservations(prev => [
         ...prev,
-        { 
-          id: `CUSTOM-${Date.now()}`, 
-          observation: customObservation.trim(), 
-          isCustom: true 
+        {
+          id: `CUSTOM-${Date.now()}`,
+          observation: customObservation.trim(),
+          isCustom: true
         }
       ]);
       setCustomObservation('');
     }
   };
 
-  const handleSubmit = async (e) => {
+  // ---------- NEW SUBMIT HANDLER: Save & Print ----------
+  const handleSaveAndPrint = async (e) => {
     e.preventDefault();
 
+    // Validation (same as before)
     if (!formData.claimNo || !formData.dealerView || !formData.brand || !formData.size || !formData.serialNo) {
       setMessage('Please fill all required fields');
       return;
@@ -325,6 +604,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
 
     setLoading(true);
     try {
+      let savedId;
       if (mode === 'create') {
         const basicData = {
           receivedDate: formData.receivedDate,
@@ -334,15 +614,26 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           brand: formData.brand,
           size: formData.size,
           sizeCode: formData.sizeCode,
+          originalTread: formData.originalTread,
           serialNo: formData.serialNo,
-          locationName: formData.locationName,
-          stackName: formData.stackName
         };
-        const registerId = await createRegister(basicData);
-        setMessage('Basic information saved successfully! Registration No: ' + registerId);
+        savedId = await createRegister(basicData);
+        // Build full register object for printing
+        const registerData = {
+          id: savedId,
+          ...formData,
+        };
+        printRegister(registerData);
+        setMessage(`Basic information saved successfully! Registration No: ${savedId}`);
         setTimeout(() => onSuccess(), 2000);
       } else {
+        // Edit mode
         await updateRegister(initialData.id, formData);
+        const registerData = {
+          id: initialData.id,
+          ...formData,
+        };
+        printRegister(registerData);
         setMessage('Registration updated successfully!');
         setTimeout(() => onSuccess(), 2000);
       }
@@ -353,6 +644,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
       setLoading(false);
     }
   };
+  // ----------------------------------------------------------------
 
   return (
     <Paper elevation={3} sx={{ p: 3, mb: 3, maxWidth: '900px', mx: 'auto' }}>
@@ -366,7 +658,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSaveAndPrint}>
         {/* Basic Info Card */}
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent>
@@ -439,7 +731,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                   <TextField {...params} label="Size" required fullWidth />
                 )}
                 freeSolo
-                sx={{ flex: 3 }} 
+                sx={{ flex: 3 }}
               />
             </Box>
 
@@ -461,6 +753,14 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                 placeholder="Enter the Serial No & DOT here..."
                 required
               />
+              <TextField
+                fullWidth
+                label="Original Tread Depth"
+                name="originalTread"
+                value={formData.originalTread}
+                onChange={handleChange}
+                disabled
+              />
             </Box>
           </CardContent>
         </Card>
@@ -472,31 +772,31 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               <Typography variant="h6">Technical Details</Typography>
 
               <Box display="flex" gap={2} mb={2}>
-                <TextField 
-                  fullWidth 
-                  label="Observation Date" 
-                  type="date" 
+                <TextField
+                  fullWidth
+                  label="Observation Date"
+                  type="date"
                   name="obsDate"
-                  value={formData.obsDate} 
-                  onChange={handleChange} 
-                  InputLabelProps={{ shrink: true }} 
+                  value={formData.obsDate}
+                  onChange={handleChange}
+                  InputLabelProps={{ shrink: true }}
                 />
-                <TextField 
-                  fullWidth 
-                  label="Remaining Tread Depth" 
+                <TextField
+                  fullWidth
+                  label="Remaining Tread Depth"
                   name="treadDepth"
-                  value={formData.treadDepth} 
-                  onChange={handleChange} 
-                  placeholder="e.g., 6,6,6,6" 
+                  value={formData.treadDepth}
+                  onChange={handleChange}
+                  placeholder="e.g., 6,6,6,6"
                 />
               </Box>
 
               <Box display="flex" gap={2} mb={2}>
                 <FormControl fullWidth>
                   <InputLabel>Consultant Name</InputLabel>
-                  <Select 
-                    name="consultantName" 
-                    value={formData.consultantName || ''}  // Fallback to empty string
+                  <Select
+                    name="consultantName"
+                    value={formData.consultantName || ''}
                     label="Consultant Name"
                     onChange={handleChange}
                   >
@@ -510,9 +810,9 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                 </FormControl>
                 <FormControl fullWidth>
                   <InputLabel>Observation Status</InputLabel>
-                  <Select 
-                    name="obsStatus" 
-                    value={formData.obsStatus} 
+                  <Select
+                    name="obsStatus"
+                    value={formData.obsStatus}
                     label="Observation Status"
                     onChange={handleStatusChange}
                   >
@@ -528,13 +828,13 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
                 </FormControl>
               </Box>
 
-              <TextField 
-                fullWidth 
-                label="Observation Number" 
+              <TextField
+                fullWidth
+                label="Observation Number"
                 name="obsNo"
-                value={formData.obsNo} 
-                onChange={handleChange} 
-                disabled 
+                value={formData.obsNo}
+                onChange={handleChange}
+                disabled
               />
 
               <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
@@ -573,12 +873,12 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               )}
 
               <Box display="flex" gap={2} mb={2}>
-                <TextField 
-                  fullWidth 
-                  label="Custom Observation" 
+                <TextField
+                  fullWidth
+                  label="Custom Observation"
                   value={customObservation}
-                  onChange={(e) => setCustomObservation(e.target.value)} 
-                  multiline 
+                  onChange={(e) => setCustomObservation(e.target.value)}
+                  multiline
                   rows={2}
                 />
                 <IconButton onClick={addCustomObservation} disabled={!customObservation.trim()} color="primary">
@@ -587,33 +887,33 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
               </Box>
 
               <Box display="flex" gap={2} mb={2}>
-                <FormControlLabel 
+                <FormControlLabel
                   control={
-                    <Checkbox 
-                      checked={manufacturingDefect} 
-                      onChange={(e) => setManufacturingDefect(e.target.checked)} 
+                    <Checkbox
+                      checked={manufacturingDefect}
+                      onChange={(e) => setManufacturingDefect(e.target.checked)}
                     />
-                  } 
-                  label="Manufacturing Defect" 
+                  }
+                  label="Manufacturing Defect"
                 />
-                <FormControlLabel 
+                <FormControlLabel
                   control={
-                    <Checkbox 
-                      checked={noManufacturingDefect} 
-                      onChange={(e) => setNoManufacturingDefect(e.target.checked)} 
+                    <Checkbox
+                      checked={noManufacturingDefect}
+                      onChange={(e) => setNoManufacturingDefect(e.target.checked)}
                     />
-                  } 
-                  label="No Manufacturing Defect" 
+                  }
+                  label="No Manufacturing Defect"
                 />
               </Box>
 
-              <TextField 
-                fullWidth 
-                multiline 
-                rows={4} 
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
                 label="Technical Observation"
-                value={formData.techObs} 
-                InputProps={{ style: { whiteSpace: 'pre-line' } }} 
+                value={formData.techObs}
+                InputProps={{ style: { whiteSpace: 'pre-line' } }}
               />
             </CardContent>
           </Card>
@@ -669,8 +969,9 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           <Button onClick={() => onSuccess()} variant="outlined">
             Cancel
           </Button>
+          {/* Save button changed to Save & Print */}
           <Button type="submit" variant="contained" color="primary" disabled={loading}>
-            {loading ? 'Saving...' : (mode === 'create' ? 'Save Basic Info' : 'Save')}
+            {loading ? 'Saving...' : 'Save & Print'}
           </Button>
         </Box>
       </form>
