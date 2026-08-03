@@ -1,16 +1,20 @@
 // server/controllers/recheck.controller.js
 const db = require('../config/db');
 
-// Helper: Get next RE integer (1, 2, 3, ...) for every recheck
+// Helper: Get next RC number as string "RC0001", "RC0002", ...
 const getNextReNumber = async () => {
   const [rows] = await db.query(
     "SELECT reNo FROM registers WHERE reNo IS NOT NULL ORDER BY reNo DESC LIMIT 1"
   );
   let nextNumber = 1;
   if (rows.length > 0 && rows[0].reNo) {
-    nextNumber = rows[0].reNo + 1;
+    const match = rows[0].reNo.match(/^RC(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num)) nextNumber = num + 1;
+    }
   }
-  return nextNumber;
+  return `RC${nextNumber.toString().padStart(4, '0')}`;
 };
 
 // Helper: Generate new observation number (R, NR, SCN)
@@ -67,7 +71,7 @@ exports.getRegisterList = async (req, res) => {
   }
 };
 
-// Save new recheck (always generates a new RE number)
+// Save new recheck (generates a new RC number)
 exports.saveRecheck = async (req, res) => {
   const { id, reObsDate, reObsStatus, reObs, reTreadDepth } = req.body;
   if (!id || !reObsDate || !reObsStatus) {
@@ -87,15 +91,13 @@ exports.saveRecheck = async (req, res) => {
     const originalStatus = current[0].obsStatus;
     const originalObsNo = current[0].obsNo;
 
-    // Generate a new RE number for every recheck
+    // Generate a new RC number (string like "RC0001")
     const reNo = await getNextReNumber();
 
     let reObsNo;
     if (reObsStatus === originalStatus) {
-      // Same status: use original observation number
       reObsNo = originalObsNo;
     } else {
-      // Different status: generate new observation number based on new status
       let type = '';
       switch (reObsStatus) {
         case 'Recommended': type = 'R'; break;
@@ -106,16 +108,16 @@ exports.saveRecheck = async (req, res) => {
       reObsNo = await generateObservationNumber(type);
     }
 
-    // Update registers table
+    // Update registers table – store the string "RCxxxx" in reNo
     await connection.query(
       `UPDATE registers SET reObsDate = ?, reObsStatus = ?, reObs = ?, reTreadDepth = ?, reObsNo = ?, reNo = ? WHERE id = ?`,
       [reObsDate, reObsStatus, reObs, reTreadDepth, reObsNo, reNo, id]
     );
 
-    // Insert into rechecks table
+    // Insert into rechecks table – store the same string in reNo (now VARCHAR)
     await connection.query(
-      `INSERT INTO rechecks (id, reObsDate, reObsStatus, reObs, reTreadDepth, reObsNo) VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, reObsDate, reObsStatus, reObs, reTreadDepth, reObsNo]
+      `INSERT INTO rechecks (id, reObsDate, reObsStatus, reObs, reTreadDepth, reObsNo, reNo) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, reObsDate, reObsStatus, reObs, reTreadDepth, reObsNo, reNo]
     );
 
     await connection.commit();

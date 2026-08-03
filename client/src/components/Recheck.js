@@ -253,7 +253,7 @@ const Recheck = () => {
     }
   };
 
-  // Updated print function with the same table structure as original note
+  // Updated print function – now displays the Spec (original tread depth)
   const handlePrint = (recheck) => {
     const printWindow = window.open('', '_blank');
     const logoHtml = `<img src="/recheck.png" alt="Logo" style="height: 200px; position: absolute; top: 0px; left:0px;">`;
@@ -261,7 +261,7 @@ const Recheck = () => {
     // Determine header title and note number label
     let headerTitle = "RECHECK NOTE";
     let noteNumberLabel = "Recheck No";
-    const recheckDisplay = recheck.reNo ? `RE${recheck.reNo.toString().padStart(4, '0')}` : recheck.reObsNo;
+    const recheckDisplay = recheck.reNo ? `${recheck.reNo.toString().padStart(4, '0')}` : recheck.reObsNo;
     
     // Format observations with line breaks
     const formattedPrevObs = recheck.techObs ? recheck.techObs.replace(/\n/g, '<br/>') : 'N/A';
@@ -500,7 +500,7 @@ const Recheck = () => {
           <br>
           <br>
           
-          <!-- NSD / Refund Table -->
+          <!-- NSD / Refund Table – Spec cell now displays the original tread depth -->
           <table class="refund-table">
             <tr>
               <th colspan="2">NSD</th>
@@ -513,7 +513,7 @@ const Recheck = () => {
               <th>Rs.</th>
             </tr>
             <tr>
-              <td style="height: 30px;"></td>
+              <td style="height: 30px;">${recheck.originalTread || ''}</td>
               <td></td>
               <td></td>
               <td></td>
@@ -705,7 +705,8 @@ const Recheck = () => {
             </Button>
           )}
         </Box>
-        {message && <Alert severity={message.includes('success') ? 'success' : 'error'} sx={{ mt: 2 }}>{message}</Alert>}
+        {message && <Alert severity={message.includes('success') ? 'success' : 'error'} sx={{ mt: 2 }}>{message}</Alert>
+        }
       </Paper>
 
       {/* All Rechecks Table */}
@@ -731,7 +732,7 @@ const Recheck = () => {
             {rechecks.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.id}</TableCell>
-                <TableCell>{row.reNo ? `RE${row.reNo.toString().padStart(4, '0')}` : row.reObsNo}</TableCell>
+                <TableCell>{row.reNo ? `${row.reNo.toString().padStart(4, '0')}` : row.reObsNo}</TableCell>
                 <TableCell>{row.obsNo}</TableCell>
                 <TableCell>{row.obsDate ? format(new Date(row.obsDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                 <TableCell sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }}>{row.techObs?.substring(0, 50)}...</TableCell>
