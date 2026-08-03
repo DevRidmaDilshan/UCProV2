@@ -332,7 +332,7 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
           </div>
           <div class="footer">
           <br><br>
-          _______________________________________________________________________<br>
+          ______________________________________________________________________________________________________________<br>
             <b><i>N.B.A refunded claim tyre becomes the property of Wheels (Pvt) Ltd.</i></b>
           </div>
         </div>
