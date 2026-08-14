@@ -1,125 +1,233 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise'); // Add this import
+const path = require('path');
 require('dotenv').config();
 
-// Import your routes
+// Database
+const pool = require('./config/db');
+
+// Routes
 const registerRoutes = require('./routes/register.routes');
 const dashboardRoutes = require('./routes/dashboard');
-const dailyReportRoutes = require('./routes/dailyReport'); 
+const dailyReportRoutes = require('./routes/dailyReport');
 const observationRoutes = require('./routes/observations');
 const recheckRoutes = require('./routes/recheck.routes');
 
 const app = express();
 
-// CORS configuration
+// =====================================================
+// MIDDLEWARE
+// =====================================================
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: true,
   credentials: true
 }));
 
-// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Create MySQL connection pool
-const createPool = () => {
-  return mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'your_database_name',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-};
+// =====================================================
+// DATABASE TEST
+// =====================================================
 
-let pool;
+async function testDatabaseConnection() {
+  try {
+    const connection = await pool.getConnection();
 
-// Initialize database connection
-try {
-  pool = createPool();
-  console.log('✅ Database connection pool created');
-} catch (error) {
-  console.error('❌ Failed to create database connection pool:', error);
+    console.log('====================================');
+    console.log('✅ MySQL Database Connected');
+    console.log(`✅ Database: ${process.env.DB_NAME}`);
+    console.log('====================================');
+
+    connection.release();
+  } catch (error) {
+    console.error('====================================');
+    console.error('❌ MySQL Database Connection Failed');
+    console.error(error.message);
+    console.error('====================================');
+  }
 }
 
-// Routes
+// =====================================================
+// API ROUTES
+// =====================================================
+
 app.use('/api/registers', registerRoutes);
+
 app.use('/api/dashboard', dashboardRoutes);
+
 app.use('/api/dailyReport', dailyReportRoutes);
+
 app.use('/api/observations', observationRoutes);
+
 app.use('/api/rechecks', recheckRoutes);
 
-// ✅ FIXED: /api/sizes route with proper database connection
+// =====================================================
+// SIZES
+// =====================================================
+
 app.get('/api/sizes', async (req, res) => {
   console.log('✅ /api/sizes route hit');
-  
-  if (!pool) {
-    return res.status(500).json({ 
-      error: 'Database connection not available',
-      suggestion: 'Check your database configuration and environment variables'
-    });
-  }
 
   try {
-    console.log('✅ Attempting to fetch sizes from database...');
-    
-    // Use the connection pool to query the database
     const [rows] = await pool.execute(
-      'SELECT sizeCode, size, brand, category FROM sizes'
+      'SELECT sizeCode, size, brand, category FROM sizes ORDER BY brand, size'
     );
-    
-    console.log(`✅ Successfully fetched ${rows.length} sizes from database`);
+
+    console.log(`✅ Successfully fetched ${rows.length} sizes`);
+
     res.json(rows);
-    
+
   } catch (error) {
+
     console.error('❌ Database error in /api/sizes:', error);
-    
-    // Provide more helpful error information
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Error fetching sizes data',
-      details: error.message,
-      suggestion: 'Check if the sizes table exists and has the correct structure'
+      details: error.message
     });
   }
 });
 
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'API endpoint not found' });
-});
+// =====================================================
+// LOCATIONS
+// =====================================================
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
-});
-
-// ========== LOCATIONS & STACKS ENDPOINTS ==========
 app.get('/api/locations', async (req, res) => {
+
   try {
-    const [rows] = await pool.execute('SELECT locationID, locationName FROM locations ORDER BY locationName');
+
+    const [rows] = await pool.execute(
+      'SELECT locationID, locationName FROM locations ORDER BY locationName'
+    );
+
     res.json(rows);
+
   } catch (error) {
-    console.error('Error fetching locations:', error);
-    res.status(500).json({ error: 'Failed to fetch locations' });
+
+    console.error('❌ Error fetching locations:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch locations',
+      details: error.message
+    });
   }
 });
+
+// =====================================================
+// STACKS
+// =====================================================
 
 app.get('/api/stacks', async (req, res) => {
+
   try {
-    const [rows] = await pool.execute('SELECT stackID, stackName FROM stacks ORDER BY stackName');
+
+    const [rows] = await pool.execute(
+      'SELECT stackID, stackName FROM stacks ORDER BY stackName'
+    );
+
     res.json(rows);
+
   } catch (error) {
-    console.error('Error fetching stacks:', error);
-    res.status(500).json({ error: 'Failed to fetch stacks' });
+
+    console.error('❌ Error fetching stacks:', error);
+
+    res.status(500).json({
+      error: 'Failed to fetch stacks',
+      details: error.message
+    });
   }
 });
 
+// =====================================================
+// API TEST ROUTE
+// =====================================================
 
-// Start server
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'UC Tyre System API is running',
+    status: 'OK',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// =====================================================
+// PRODUCTION REACT FRONTEND
+// =====================================================
+
+if (process.env.NODE_ENV === 'production') {
+
+  const frontendPath = path.join(__dirname, 'client');
+
+  // Serve React static files
+  app.use(express.static(frontendPath));
+
+  // React Router fallback
+  app.get(/.*/, (req, res, next) => {
+
+    // Don't handle API routes here
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+
+    res.sendFile(
+      path.join(frontendPath, 'index.html')
+    );
+  });
+
+} else {
+
+  app.get('/', (req, res) => {
+    res.send('UC Tyre System API is running...');
+  });
+
+}
+
+// =====================================================
+// 404 HANDLER
+// =====================================================
+
+app.use((req, res) => {
+
+  res.status(404).json({
+    message: 'API endpoint not found',
+    path: req.originalUrl
+  });
+
+});
+
+// =====================================================
+// ERROR HANDLER
+// =====================================================
+
+app.use((err, req, res, next) => {
+
+  console.error('❌ Server Error:', err.stack);
+
+  res.status(500).json({
+    message: 'Something went wrong!',
+    error: err.message
+  });
+
+});
+
+// =====================================================
+// START SERVER
+// =====================================================
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
+app.listen(PORT, '0.0.0.0', async () => {
+
+  console.log('====================================');
+  console.log('🚀 UC TYRE SYSTEM SERVER');
+  console.log('====================================');
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Local: http://localhost:${PORT}`);
+  console.log(`✅ Network: http://192.168.1.110:${PORT}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV}`);
+  console.log('====================================');
+
+  await testDatabaseConnection();
+});

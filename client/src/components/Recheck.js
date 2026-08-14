@@ -11,7 +11,7 @@ import {
 import { Save, Print, Refresh, Edit, Delete, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 const Recheck = () => {
   const [searchType, setSearchType] = useState('id');

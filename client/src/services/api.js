@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api/registers',
+  baseURL: 'http://192.168.1.110:5000/api/registers',
 });
 
 // Request interceptor to log requests
@@ -30,7 +30,7 @@ api.interceptors.response.use(
 );
 
 export const createRegister = (data) => api.post('/', data);
-export const getAllRegisters = () => api.get('/');
+export const getAllRegisters = () => api.get(${API_BASE_URL} + '/');
 // export const getRegisterById = (id) => api.get(`/${id}`);
 export const updateRegister = (id, data) => api.put(`/${id}`, data);
 export const deleteRegister = (id) => api.delete(`/${id}`);

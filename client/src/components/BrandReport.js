@@ -31,7 +31,7 @@ import {
 import { ExpandMore, PictureAsPdf, TableChart } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 const BrandReport = () => {
   const [brands, setBrands] = useState([]);

@@ -55,8 +55,8 @@ const Dashboard = () => {
     }
     try {
       const [res, sizesRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/dashboard?startDate=${startDate}&endDate=${endDate}`),
-        axios.get('http://localhost:5000/api/sizes') // Fetch sizes data
+        axios.get(`/api/dashboard?startDate=${startDate}&endDate=${endDate}`),
+        axios.get('/api/sizes') // Fetch sizes data
       ]);
       setData(res.data);
       setSizesData(sizesRes.data);

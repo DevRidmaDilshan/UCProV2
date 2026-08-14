@@ -33,7 +33,7 @@ const DailyReport = () => {
   useEffect(() => {
     const fetchConsultants = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/dailyReport/consultants');
+        const res = await axios.get('/api/dailyReport/consultants');
         setConsultants(res.data);
       } catch (err) {
         console.error(err);
@@ -48,7 +48,7 @@ const DailyReport = () => {
       return;
     }
     try {
-      const res = await axios.get(`http://localhost:5000/api/dailyReport`, {
+      const res = await axios.get(`/api/dailyReport`, {
         params: filters
       });
       setData(res.data);
