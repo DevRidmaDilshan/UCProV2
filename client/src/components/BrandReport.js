@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getBrandReportInitialData, getBrandReport } from '../services/api';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -31,8 +31,6 @@ import {
 import { ExpandMore, PictureAsPdf, TableChart } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-const API_BASE_URL = '/api';
-
 const BrandReport = () => {
   const [brands, setBrands] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -46,7 +44,7 @@ const BrandReport = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/registers/initial-data`);
+        const res = await getBrandReportInitialData();
         setBrands(res.data.brands || []);
       } catch (err) {
         console.error(err);
@@ -63,9 +61,7 @@ const BrandReport = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API_BASE_URL}/registers/brand-report`, {
-        params: { brand: selectedBrand, startDate, endDate }
-      });
+      const res = await getBrandReport({ brand: selectedBrand, startDate, endDate });
       setReportData(res.data);
     } catch (err) {
       console.error(err);

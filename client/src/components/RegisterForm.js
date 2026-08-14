@@ -32,11 +32,10 @@ import {
   updateRegister,
   getAllConsultants,
   getNextObservationNumber,
-  getAllObservations
+  getAllObservations,
+  getAllLocations,
+  getAllStacks
 } from '../services/api';
-import axios from 'axios';
-
-const API_BASE_URL = '/api';
 
 const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode = false }) => {
   const [formData, setFormData] = useState({
@@ -407,8 +406,8 @@ const RegisterForm = ({ initialData, onSuccess, mode = 'create', technicalMode =
         setObservations(observationsRes.data || []);
 
         const [locationsRes, stacksRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/registers/locations/all`),
-          axios.get(`${API_BASE_URL}/registers/stacks/all`)
+          getAllLocations(),
+          getAllStacks()
         ]);
         setLocations(locationsRes.data);
         setStacks(stacksRes.data);

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
+import api, { getDashboardData } from '../services/api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -55,8 +55,8 @@ const Dashboard = () => {
     }
     try {
       const [res, sizesRes] = await Promise.all([
-        axios.get(`/api/dashboard?startDate=${startDate}&endDate=${endDate}`),
-        axios.get('/api/sizes') // Fetch sizes data
+        getDashboardData(startDate, endDate),
+        api.get('/sizes') // Fetch sizes data
       ]);
       setData(res.data);
       setSizesData(sizesRes.data);
