@@ -1,6 +1,6 @@
 // components/MenuPage.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getMenuDashboardData } from '../services/api';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, FormControl,
   InputLabel, Select, MenuItem, Button, CircularProgress, Table,
@@ -8,8 +8,6 @@ import {
   Alert
 } from '@mui/material';
 import { Refresh } from '@mui/icons-material';
-
-const API_BASE = '/api';
 
 const MenuPage = () => {
   const [month, setMonth] = useState('');
@@ -28,7 +26,7 @@ const MenuPage = () => {
     setError('');
     try {
       const params = selectedMonth ? { month: selectedMonth } : {};
-      const res = await axios.get(`${API_BASE}/registers/menu-dashboard`, { params });
+      const res = await getMenuDashboardData(params);
       if (res.data) {
         setStats(res.data);
         if (res.data.availableMonths && res.data.availableMonths.length > 0) {

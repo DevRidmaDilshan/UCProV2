@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getDailyReportConsultants, getDailyReportData } from '../services/api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -33,7 +33,7 @@ const DailyReport = () => {
   useEffect(() => {
     const fetchConsultants = async () => {
       try {
-        const res = await axios.get('/api/dailyReport/consultants');
+        const res = await getDailyReportConsultants();
         setConsultants(res.data);
       } catch (err) {
         console.error(err);
@@ -48,9 +48,7 @@ const DailyReport = () => {
       return;
     }
     try {
-      const res = await axios.get(`/api/dailyReport`, {
-        params: filters
-      });
+      const res = await getDailyReportData(filters);
       setData(res.data);
     } catch (err) {
       console.error(err);

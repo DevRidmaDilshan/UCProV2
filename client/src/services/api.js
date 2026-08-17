@@ -1,15 +1,19 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
+// Single source of truth for the backend host. Set via REACT_APP_API_URL in
+// client/.env — never hardcode a host/IP in component code or use relative
+// '/api/...' paths, since those resolve against whatever origin the page was
+// loaded from (e.g. localhost:3000) instead of the backend.
+const API_HOST = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: 'http://192.168.1.110:5000/api/registers',
+  baseURL: `${API_HOST}/api`,
 });
 
 // Request interceptor to log requests
 api.interceptors.request.use(
   (config) => {
-    console.log('Making request to:', config.url);
+    console.log('Making request to:', config.baseURL + config.url);
     return config;
   },
   (error) => {
@@ -29,45 +33,44 @@ api.interceptors.response.use(
   }
 );
 
-export const createRegister = (data) => api.post('/', data);
-export const getAllRegisters = () => api.get(${API_BASE_URL} + '/');
-// export const getRegisterById = (id) => api.get(`/${id}`);
-export const updateRegister = (id, data) => api.put(`/${id}`, data);
-export const deleteRegister = (id) => api.delete(`/${id}`);
-export const getInitialData = () => api.get('/initial-data');
-export const getDealerByView = (dealerView) => api.get(`/dealer/${dealerView}`);
-export const getSizesByBrand = (brand) => api.get(`/sizes/${brand}`);
-export const getSizeDetails = (size) => api.get(`/size-details/${size}`);
-export const getAllConsultants = () => api.get('/consultants/all');
-export const getNextObservationNumber = (type) => api.get(`/observation-number/${type}`);
-export const getDashboardData = () => api.get('/dashboard');
-export const generateReport = (filters) => api.post('/reports', filters);
-export const getDailyReportData = () => api.get('/dailyReport');
-// export const getAllObservations = () => api.get('/observations');
-export const getAllObservations = () => {
-  return axios.get(`${API_BASE_URL}/observations`); // This should match the mounted route
-};
-// Get all registers for dropdown
-// export const getAllRegistersForDropdown = () => {
-//   return axios.get('/api/registers/dropdown');
-// };
+// ------------------- Registers (/api/registers/*) -------------------
+export const createRegister = (data) => api.post('/registers', data);
+export const getAllRegisters = () => api.get('/registers');
+export const getRegisterById = (id) => api.get(`/registers/${id}`);
+export const updateRegister = (id, data) => api.put(`/registers/${id}`, data);
+export const deleteRegister = (id) => api.delete(`/registers/${id}`);
+export const getInitialData = () => api.get('/registers/initial-data');
+export const getDealerByView = (dealerView) => api.get(`/registers/dealer/${dealerView}`);
+export const getSizesByBrand = (brand) => api.get(`/registers/sizes/${brand}`);
+export const getSizeDetails = (size) => api.get(`/registers/size-details/${size}`);
+export const getAllConsultants = () => api.get('/registers/consultants/all');
+export const getAllLocations = () => api.get('/registers/locations/all');
+export const getAllStacks = () => api.get('/registers/stacks/all');
+export const getNextObservationNumber = (type) => api.get(`/registers/observation-number/${type}`);
+export const generateReport = (filters) => api.post('/registers/reports', filters);
+export const getAllRegistersForDropdown = () => api.get('/registers/dropdown/registers');
+export const getBrandReportInitialData = () => api.get('/registers/initial-data');
+export const getBrandReport = (params) => api.get('/registers/brand-report', { params });
+export const getMenuDashboardData = (params) => api.get('/registers/menu-dashboard', { params });
 
-// Get register by ID
-// export const getRegisterById = (id) => {
-//   return axios.get(`/api/registers/${id}`);
-// };
+// ------------------- Dashboard (/api/dashboard) -------------------
+export const getDashboardData = (startDate, endDate) =>
+  api.get('/dashboard', { params: { startDate, endDate } });
 
+// ------------------- Daily report (/api/dailyReport/*) -------------------
+export const getDailyReportConsultants = () => api.get('/dailyReport/consultants');
+export const getDailyReportData = (params) => api.get('/dailyReport', { params });
 
-// Add to your services/api.js
-export const getAllRegistersForDropdown = () => {
-  return axios.get('/api/registers/dropdown/registers');
-};
+// ------------------- Observations (/api/observations) -------------------
+export const getAllObservations = () => api.get('/observations');
 
-export const getRegisterById = (id) => {
-  return axios.get(`/api/registers/${id}`);
-};
+// ------------------- Rechecks (/api/rechecks/*) -------------------
+export const getRegisterListForRecheck = () => api.get('/rechecks/register-list');
+export const getRegisterDetailsForRecheck = (searchType, value) =>
+  api.get('/rechecks/register-details', { params: { searchType, value } });
+export const saveRecheck = (data) => api.post('/rechecks/save', data);
+export const updateRecheck = (id, data) => api.put(`/rechecks/${id}`, data);
+export const deleteRecheck = (id) => api.delete(`/rechecks/${id}`);
+export const getAllRechecks = () => api.get('/rechecks/all');
 
-export const getRegisterListForRecheck = () => axios.get(`${API_BASE_URL}/rechecks/register-list`);
-export const getRegisterDetailsForRecheck = (searchType, value) => axios.get(`${API_BASE_URL}/rechecks/register-details`, { params: { searchType, value } });
-export const saveRecheck = (data) => axios.post(`${API_BASE_URL}/rechecks/save`, data);
-export const getAllRechecks = () => axios.get(`${API_BASE_URL}/rechecks/all`);
+export default api;

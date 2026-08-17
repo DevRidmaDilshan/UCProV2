@@ -1,6 +1,14 @@
 // components/Recheck.js
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import {
+  getRegisterListForRecheck,
+  getAllRechecks as fetchAllRechecksApi,
+  getAllObservations,
+  getRegisterDetailsForRecheck,
+  updateRecheck,
+  saveRecheck,
+  deleteRecheck
+} from '../services/api';
 import {
   Paper, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem,
   Box, Grid, Alert, CircularProgress, Table, TableBody, TableCell, TableContainer,
@@ -10,8 +18,6 @@ import {
 } from '@mui/material';
 import { Save, Print, Refresh, Edit, Delete, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
-
-const API_BASE = '/api';
 
 const Recheck = () => {
   const [searchType, setSearchType] = useState('id');
@@ -47,7 +53,7 @@ const Recheck = () => {
 
   const fetchRegisterList = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/rechecks/register-list`);
+      const res = await getRegisterListForRecheck();
       setRegisterList(res.data);
     } catch (err) {
       console.error(err);
@@ -56,7 +62,7 @@ const Recheck = () => {
 
   const fetchAllRechecks = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/rechecks/all`);
+      const res = await fetchAllRechecksApi();
       setRechecks(res.data);
     } catch (err) {
       console.error(err);
@@ -65,7 +71,7 @@ const Recheck = () => {
 
   const fetchObservations = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/observations`);
+      const res = await getAllObservations();
       setObservations(res.data);
     } catch (err) {
       console.error(err);
@@ -77,9 +83,7 @@ const Recheck = () => {
     if (newValue) {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_BASE}/rechecks/register-details`, {
-          params: { searchType, value: newValue[searchType] }
-        });
+        const res = await getRegisterDetailsForRecheck(searchType, newValue[searchType]);
         setRegisterDetails(res.data);
         // Reset form
         setFormData({
@@ -156,7 +160,7 @@ const Recheck = () => {
     setMessage('');
     try {
       if (editMode) {
-        await axios.put(`${API_BASE}/rechecks/${editId}`, {
+        await updateRecheck(editId, {
           reObsDate: formData.reObsDate,
           reObsStatus: formData.reObsStatus,
           reObs: techObsString,
@@ -164,7 +168,7 @@ const Recheck = () => {
         });
         setMessage('Recheck updated successfully');
       } else {
-        await axios.post(`${API_BASE}/rechecks/save`, {
+        await saveRecheck({
           id: selectedRegister.id,
           reObsDate: formData.reObsDate,
           reObsStatus: formData.reObsStatus,
@@ -243,7 +247,7 @@ const Recheck = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await axios.delete(`${API_BASE}/rechecks/${deleteId}`);
+      await deleteRecheck(deleteId);
       fetchAllRechecks();
       setDeleteId(null);
       setMessage('Recheck deleted successfully');
