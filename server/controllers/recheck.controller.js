@@ -41,7 +41,7 @@ const generateObservationNumber = async (type) => {
 exports.getRegistersForRecheck = async (req, res) => {
   try {
     const { searchType, value } = req.query;
-    let query = `SELECT id, claimNo, dealerView, brand, size, serialNo, obsNo, obsStatus, techObs, treadDepth, obsDate, consultantName 
+    let query = `SELECT id, claimNo, dealerView, brand, size, serialNo,pr , pattern . obsNo, obsStatus, techObs, treadDepth, obsDate, consultantName 
                  FROM registers WHERE obsStatus IN ('Recommended', 'Not Recommended', 'Forwarded for Management Decision')`;
     if (searchType === 'id') {
       query += ` AND id = ?`;
@@ -190,7 +190,7 @@ exports.deleteRecheck = async (req, res) => {
 exports.getAllRechecks = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT r.id, r.claimNo, r.dealerView, r.brand, r.size, r.serialNo,
+      SELECT r.id, r.claimNo, r.dealerView, r.brand, r.size, r.serialNo, r.pr, r.pattern,
              r.obsNo, r.obsDate, r.techObs, r.treadDepth, r.obsStatus,
              r.reObsDate, r.reObsStatus, r.reObs, r.reTreadDepth, r.reObsNo, r.reNo
       FROM registers r

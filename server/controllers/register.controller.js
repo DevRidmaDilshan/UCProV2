@@ -460,7 +460,7 @@ exports.generateBrandReport = async (req, res) => {
 exports.getRegistersForDropdown = async (req, res) => {
   try {
     const query = `
-      SELECT id, claimNo, dealerView, brand, size, serialNo 
+      SELECT id, claimNo, dealerView, brand, size, serialNo ,pr , pattern,
       FROM registers 
       ORDER BY id DESC
     `;
@@ -474,7 +474,9 @@ exports.getRegistersForDropdown = async (req, res) => {
       dealerView: register.dealerView || 'N/A',
       brand: register.brand || 'N/A',
       size: register.size || 'N/A',
-      serialNo: register.serialNo || 'N/A'
+      serialNo: register.serialNo || 'N/A',
+      pr: register.pr || 'N/A',
+      pattern: register.pattern || 'N/A'
     }));
     
     res.json(dropdownData);
